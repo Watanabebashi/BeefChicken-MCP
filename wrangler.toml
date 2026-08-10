@@ -1,0 +1,21 @@
+name = "beefchicken-mcp"
+main = "src/index.ts"
+compatibility_date = "2024-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "npm run generate"
+watch_dir = ["docs/openapi.yaml", "scripts"]
+
+[observability]
+enabled = true
+
+[vars]
+# API_BASE_URL = "https://api.example.com"
+# PUBLIC_URL = "https://beefchicken-mcp.<your-subdomain>.workers.dev"
+# OAUTH_ALLOWED_REDIRECT_URIS = "https://example.com/callback"
+
+[[d1_databases]]
+binding = "OAUTH_DB"
+database_name = "beefchicken-mcp-oauth"
+database_id = "local-only-placeholder-replace-before-deploy"

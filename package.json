@@ -1,0 +1,44 @@
+{
+  "name": "beefchicken-mcp",
+  "version": "0.1.0",
+  "description": "Generates an MCP server from an OpenAPI specification, deployable on Cloudflare Workers and Node.js hosting.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Watanabebashi/BeefChicken-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Watanabebashi/BeefChicken-MCP/issues"
+  },
+  "homepage": "https://github.com/Watanabebashi/BeefChicken-MCP#readme",
+  "author": "furu04 <133187748+furu04@users.noreply.github.com>",
+  "scripts": {
+    "generate": "tsx scripts/generate-tools.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "start": "tsx src/node.ts",
+    "node:dev": "tsx src/node.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.0",
+    "@modelcontextprotocol/hono": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "hono": "^4.13.1",
+    "tsx": "^4.19.0",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240821.1",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^3.83.0"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wrangler/
+.env
+.dev.vars
+oauth-state.db*
+*.log
+.DS_Store
+.claude/
+coverage/
+src/generated/

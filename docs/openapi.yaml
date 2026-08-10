@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: Example Task API
+  version: "1.0"
+  description: >
+    Minimal sample specification demonstrating how this server turns an OpenAPI 3.0
+    document into MCP tools. Replace this file with the spec of the API you actually
+    want to expose — see README.md for details.
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: tasks
+    description: Task management
+paths:
+  /tasks:
+    get:
+      tags: [tasks]
+      summary: List tasks
+      security: [{ ApiKeyAuth: [] }]
+      parameters:
+        - name: completed
+          in: query
+          schema: { type: boolean }
+          description: Filter by completion status
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Task" }
+    post:
+      tags: [tasks]
+      summary: Create a task
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTaskRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [tasks]
+      summary: Get a task
+      security: [{ ApiKeyAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [tasks]
+      summary: Delete a task
+      security: [{ ApiKeyAuth: [] }]
+      responses:
+        "204": { description: No Content }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: API key issued by the target API.
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    Task:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string, maxLength: 200 }
+        completed: { type: boolean }
+        created_at: { type: string, format: date-time }
+    CreateTaskRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, maxLength: 200 }
