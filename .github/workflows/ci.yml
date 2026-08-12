@@ -3,8 +3,40 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['22.5.0', '22']
+    env:
+      NODE_OPTIONS: --experimental-sqlite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - run: npm run typecheck
+      - run: npx vitest run --coverage
+      - if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,6 +45,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run generate
-      - run: npm run typecheck
-      - run: npm test
+      - run: npm audit --omit=dev --audit-level=moderate
+
+  workers-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start wrangler dev (OAuth configured)
+        run: |
+          KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+          npx wrangler dev --port 8787 \
+            --var API_BASE_URL:https://api.example.com \
+            --var PUBLIC_URL:https://mcp.example.com \
+            --var OAUTH_ALLOWED_REDIRECT_URIS:https://client.example/callback \
+            --var OAUTH_ENCRYPTION_KEY:"$KEY" &
+      - run: node scripts/e2e-workers-smoke.mjs
+      - name: Start wrangler dev (no OAuth / raw bearer passthrough)
+        run: |
+          npx wrangler dev --port 8788 \
+            --var API_BASE_URL:https://api.example.com \
+            --var PUBLIC_URL: \
+            --var OAUTH_ALLOWED_REDIRECT_URIS: \
+            --var OAUTH_ENCRYPTION_KEY: &
+      - run: E2E_BASE_URL=http://127.0.0.1:8788 node scripts/e2e-workers-basic-auth.mjs
