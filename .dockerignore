@@ -4,6 +4,7 @@ oauth-state.db*
 .wrangler
 dist
 coverage
+src/generated
 .git
 .github
 *.log

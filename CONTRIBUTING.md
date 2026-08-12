@@ -24,7 +24,7 @@ npm run typecheck
 npm test
 ```
 
-If you changed `docs/openapi.yaml`, re-run `npm run generate` so `src/generated/tools.json` (gitignored, generated on build/deploy) reflects it before testing.
+If you changed `docs/openapi.yaml`, re-run `npm run generate` so `src/generated/tools.json` (gitignored, generated on build/deploy/container startup) reflects it before testing.
 
 ## Pull requests
 

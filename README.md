@@ -37,7 +37,7 @@ graph LR
         API[🌐 対象Web API<br/>Stripe / GitHub / 社内API]
     end
 
-    Spec -->|ビルド時静的JSON化| MCP
+    Spec -->|ビルド時/起動時に静的JSON化| MCP
     Claude -->|MCPプロトコル / OAuth| MCP
     MCP -->|ネイティブfetch| API
 ```
@@ -55,7 +55,7 @@ graph LR
 - 🧩 **コード記述 0 行**: `docs/openapi.yaml` を繋ぎたいAPIの仕様書に差し替えるだけ！
 - 🔐 **Claude.ai (Web版) 即対応**: 簡易 OAuth 2.1 サーバー内蔵で、Web版Claudeのカスタムコネクタも一発接続。
 - ⚡️ **サーバー維持費 0 円**: **Cloudflare Workers** に数秒でデプロイ（Docker / Node.js にも対応）。無料枠内ならタダでMCPサーバーがあなたのものに。
-- 📦 **超軽量＆ゼロパースオーバーヘッド**: ビルド時に OpenAPI 仕様書を静的 JSON へ変換。実行時の YAML パースは一切不要。
+- 📦 **超軽量＆ゼロパースオーバーヘッド**: OpenAPI 仕様書はビルド時（Workers）・起動時（Docker）・デプロイ前の `npm run generate`（Node.js）のいずれかで静的 JSON へ変換済み。リクエスト処理中の YAML パースは一切不要。
 
 ---
 
@@ -111,13 +111,14 @@ API_BASE_URL=https://api.example.com npm run node:dev
 
 **Docker の場合:**
 ```bash
-docker build -t beefchicken-mcp .
 docker run -p 3000:3000 \
   -e HOST=0.0.0.0 \
   -e ALLOWED_HOSTS=127.0.0.1,localhost \
   -e API_BASE_URL=https://api.example.com \
-  beefchicken-mcp
+  -v $(pwd)/docs/openapi.yaml:/app/docs/openapi.yaml:ro \
+  ghcr.io/watanabebashi/beefchicken-mcp
 ```
+イメージは [GHCR](https://github.com/Watanabebashi/BeefChicken-MCP/pkgs/container/beefchicken-mcp) から配布されており、ビルドは不要です。自分の `openapi.yaml` をマウントすると、コンテナ起動時にそれを解析して `tools.json` を生成します（マウントしない場合は同梱のサンプル仕様書が使われます）。タグは `latest`（最新リリース）・`vX.Y.Z`（特定バージョン固定）・`edge`（main ブランチの最新ビルド）から選べます。ローカルの変更を試したい場合は、従来どおり `docker build -t beefchicken-mcp .` でビルドできます。
 
 ### 3. クライアントから接続
 発行された URL に対し `Authorization: Bearer <対象APIのAPIキー>` ヘッダーを付けて MCP クライアントに設定します。

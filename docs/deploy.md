@@ -48,6 +48,41 @@ claude.ai カスタムコネクタ向けに簡易OAuthサーバーを使う場�
    * **CLIから設定する場合**: `npx wrangler secret put OAUTH_ENCRYPTION_KEY` コマンドで設定してください。
 3. 変更をコミットして push する
 
+## Docker
+
+GHCR からイメージを pull して実行します。ビルドは不要です。
+
+```bash
+docker run -p 3000:3000 \
+  -e HOST=0.0.0.0 \
+  -e ALLOWED_HOSTS=127.0.0.1,localhost \
+  -e API_BASE_URL=https://api.example.com \
+  -v $(pwd)/docs/openapi.yaml:/app/docs/openapi.yaml:ro \
+  ghcr.io/watanabebashi/beefchicken-mcp
+```
+
+- コンテナを外部からの接続を受け付けさせるには `HOST=0.0.0.0` が必須です。`HOST=0.0.0.0` を設定して `ALLOWED_HOSTS` を設定しない場合、DNSリバインディング対策のため起動時にエラーで停止します（[環境変数](environment.md)参照）。
+- 自分の `openapi.yaml` を `/app/docs/openapi.yaml` に read-only でマウントすると、そのAPIを対象にできます。コンテナのエントリポイント（`scripts/docker-entrypoint.sh`）が起動のたびに、その時点でマウントされている仕様書に対して `npm run generate` を実行してからサーバーを起動するため、マウントした仕様書を差し替えた際も再ビルドは不要で、コンテナの再起動だけで反映されます。
+- マウントしない場合は、クローン直後と同じ、同梱のサンプル `docs/openapi.yaml`（Task API）が使われます。
+- 簡易OAuthサーバーを使う場合（`PUBLIC_URL` を設定する場合）は、SQLiteファイルへの書き込みが発生します。コンテナ再起動後もトークンを維持したい場合は `/app`（または `OAUTH_DB_PATH` が指す場所。[認証](oauth.md)参照）にボリュームをマウントしてください。
+
+### イメージタグ
+
+| タグ | 意味 | ビルド元 |
+|---|---|---|
+| `latest` | 最新のリリース | Gitタグ `vX.Y.Z` |
+| `vX.Y.Z`, `vX.Y`, `vX` | 特定バージョンに固定 | Gitタグ `vX.Y.Z` |
+| `edge` | デフォルトブランチの最新ビルド（未リリースの可能性あり） | `main` への push |
+
+公開は [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml) が `docker/build-push-action` で行います。`npm run typecheck` と `vitest run` の成功を前提条件（gate）としています。
+
+### ローカルでビルドする場合
+
+```bash
+docker build -t beefchicken-mcp .
+docker run -p 3000:3000 -e HOST=0.0.0.0 -e ALLOWED_HOSTS=localhost -e API_BASE_URL=https://api.example.com beefchicken-mcp
+```
+
 ## Node.js（共有ホスティング / セルフホスト）
 
 1. Node.js 22.5+（`node:sqlite` を使用するため。OAuthを使わない場合も含めた実要件です）が動作するホスティング環境にアプリを配置し、Application startup file（または相当する起動エントリ）を `src/node.ts`（またはビルド後のエントリ）に設定します

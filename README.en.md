@@ -37,7 +37,7 @@ graph LR
         API[🌐 Target Web API<br/>Stripe / GitHub / Internal API]
     end
 
-    Spec -->|Build-time static JSON| MCP
+    Spec -->|Compiled to static JSON at build/start| MCP
     Claude -->|MCP Protocol / OAuth| MCP
     MCP -->|Native fetch| API
 ```
@@ -55,7 +55,7 @@ graph LR
 - 🧩 **0 Lines of Code**: Simply replace `docs/openapi.yaml` with the specification of the API you want to connect!
 - 🔐 **Claude.ai (Web) Ready**: Built-in lightweight OAuth 2.1 server allows instant connection via Web Claude's custom connectors.
 - ⚡️ **$0 Server Maintenance Cost**: Deploy to **Cloudflare Workers** in seconds (supports Docker / Node.js too). Yours for free within the free tier.
-- 📦 **Ultra-lightweight & Zero Parsing Overhead**: Compiles OpenAPI specs into static JSON at build time. Zero runtime YAML parsing required.
+- 📦 **Ultra-lightweight & Zero Parsing Overhead**: Compiles OpenAPI specs into static JSON at build time (Workers), container startup (Docker), or a pre-deploy `npm run generate` (Node.js). No YAML parsing while handling requests.
 
 ---
 
@@ -111,13 +111,14 @@ API_BASE_URL=https://api.example.com npm run node:dev
 
 **For Docker:**
 ```bash
-docker build -t beefchicken-mcp .
 docker run -p 3000:3000 \
   -e HOST=0.0.0.0 \
   -e ALLOWED_HOSTS=127.0.0.1,localhost \
   -e API_BASE_URL=https://api.example.com \
-  beefchicken-mcp
+  -v $(pwd)/docs/openapi.yaml:/app/docs/openapi.yaml:ro \
+  ghcr.io/watanabebashi/beefchicken-mcp
 ```
+The image is published on [GHCR](https://github.com/Watanabebashi/BeefChicken-MCP/pkgs/container/beefchicken-mcp) — no build step required. Mount your own `openapi.yaml` and the container parses it into `tools.json` on startup (omit the mount to use the bundled sample spec). Available tags: `latest` (newest release), `vX.Y.Z` (pinned version), and `edge` (latest build from `main`). To try local changes, you can still build with `docker build -t beefchicken-mcp .` as before.
 
 ### 3. Connect from Client
 Configure your MCP client with the issued URL along with an `Authorization: Bearer <TARGET_API_KEY>` header.
