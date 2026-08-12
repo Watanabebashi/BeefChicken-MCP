@@ -24,7 +24,7 @@ export function createServer({ authInfo, fetchImpl }: FactoryContext): McpServer
 
   const server = new McpServer({
     name: readEnv('MCP_SERVER_NAME', authInfo?.env) ?? DEFAULT_SERVER_NAME,
-    version: '0.1.0',
+    version: '0.1.1',
     description: readEnv('MCP_SERVER_DESCRIPTION', authInfo?.env) ?? DEFAULT_SERVER_DESCRIPTION,
   });
 

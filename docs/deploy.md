@@ -41,7 +41,11 @@ claude.ai カスタムコネクタ向けに簡易OAuthサーバーを使う場�
 **注意**: ボタンはリポジトリの中身をそのまま fork してビルド・デプロイするだけで、ファイルの中身を差し替える手段は提供していません。そのためボタンをクリックした直後の初回デプロイは、同梱のサンプル `docs/openapi.yaml`（Task API）のまま、`wrangler.toml` の `[vars]` もコメントアウトされた状態でデプロイされます。`API_BASE_URL` が未設定のため、この時点では `tools/call` は全て失敗します。自分の対象APIをMCP化するには、ボタンが作成した自分のfork先リポジトリで以下を行い、push して Workers Builds に再デプロイさせてください。
 
 1. `docs/openapi.yaml` を対象APIの仕様書に差し替える
-2. `wrangler.toml` の `[vars]` に `API_BASE_URL`（簡易OAuthサーバーを使う場合は `PUBLIC_URL` / `OAUTH_ALLOWED_REDIRECT_URIS` も）を設定する。`OAUTH_ENCRYPTION_KEY` は `[vars]` に書かず、Cloudflareダッシュボードの Workers Builds 設定または `wrangler secret put` でシークレットとして設定する
+2. `wrangler.toml` の `[vars]` に `API_BASE_URL`（簡易OAuthサーバーを使う場合は `PUBLIC_URL` / `OAUTH_ALLOWED_REDIRECT_URIS` も）を設定する。
+
+ `OAUTH_ENCRYPTION_KEY` などのシークレットは `wrangler.toml` には**書かず**、以下のいずれかの方法で設定してください：
+   * **Webダッシュボードから設定する場合**: プロジェクトの `Settings > Variables and Secrets`（ランタイム用）に追加してください。（※誤って `Settings > Build > Build variables and secrets` に追加しないようご注意ください）
+   * **CLIから設定する場合**: `npx wrangler secret put OAUTH_ENCRYPTION_KEY` コマンドで設定してください。
 3. 変更をコミットして push する
 
 ## Node.js（共有ホスティング / セルフホスト）

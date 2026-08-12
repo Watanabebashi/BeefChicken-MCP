@@ -41,7 +41,11 @@ Note that the "Deploy to Cloudflare" button at the top of the README is a separa
 **Note**: The button only forks the repository as-is and builds/deploys it — it has no mechanism for substituting file contents. So the first deploy triggered by clicking the button ships with the bundled sample `docs/openapi.yaml` (the Task API) and with `wrangler.toml`'s `[vars]` still commented out. Since `API_BASE_URL` is unset at that point, every `tools/call` will fail. To actually turn your target API into MCP tools, go to the fork the button created for you and do the following, then push to trigger a redeploy via Workers Builds:
 
 1. Replace `docs/openapi.yaml` with your target API's spec
-2. Set `API_BASE_URL` in `wrangler.toml`'s `[vars]` (and `PUBLIC_URL` / `OAUTH_ALLOWED_REDIRECT_URIS` if you're using the lightweight OAuth server). Don't put `OAUTH_ENCRYPTION_KEY` in `[vars]`; set it as a secret via the Cloudflare dashboard's Workers Builds settings or `wrangler secret put`
+2. Set `API_BASE_URL` in `wrangler.toml`'s `[vars]` (and `PUBLIC_URL` / `OAUTH_ALLOWED_REDIRECT_URIS` if you're using the lightweight OAuth server).
+
+Do **NOT** put secrets like `OAUTH_ENCRYPTION_KEY` in `[vars]`; set them using one of the following methods:
+   * **Via Web Dashboard**: Add it under `Settings > Variables and Secrets` (for runtime). (*Note: Be careful not to add it under `Settings > Build > Build variables and secrets` by mistake*)
+   * **Via CLI**: Set it by running `npx wrangler secret put OAUTH_ENCRYPTION_KEY`.
 3. Commit and push the changes
 
 ## Node.js (shared hosting / self-hosted)
