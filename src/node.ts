@@ -1,15 +1,15 @@
+import { pathToFileURL } from 'node:url';
 import { serve } from '@hono/node-server';
 import { createMcpHonoApp } from '@modelcontextprotocol/hono';
 import { createMcpHandler, requireBearerAuth, getOAuthProtectedResourceMetadataUrl, oauthMetadataResponse, type AuthMetadataOptions } from '@modelcontextprotocol/server';
 import type { Context } from 'hono';
 import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
-import { createSqliteStores } from './oauthStore';
 import { importEncryptionKey } from './oauthCrypto';
 
 const handler = createMcpHandler(createServer, { responseMode: 'json' });
 
-async function main() {
+export async function createNodeApp() {
   const host = process.env.HOST ?? '127.0.0.1';
   const allowedHosts = getAllowedHosts();
   const allowedOrigins = getAllowedOrigins();
@@ -45,6 +45,7 @@ async function main() {
       oauthMetadata: buildAuthorizationServerMetadata(new URL(publicUrl)),
       resourceServerUrl,
     };
+    const { createSqliteStores } = await import('./oauthStore');
     const stores = createSqliteStores();
     app.route('/', createOAuthRoutes(allowedRedirectUris, stores, encryptionKey));
     app.all('/.well-known/oauth-authorization-server', (c) => oauthMetadataResponse(c.req.raw, authMetadataOptions!) ?? c.notFound());
@@ -72,16 +73,23 @@ async function main() {
     return handler.fetch(c.req.raw, { authInfo });
   });
 
+  return { app, host };
+}
+
+async function main() {
+  const { app, host } = await createNodeApp();
   const port = Number(process.env.PORT ?? 3000);
   serve({ fetch: app.fetch, port, hostname: host }, (info) => {
     console.log(`MCP server listening on http://${host}:${info.port}/mcp`);
   });
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}
 
 function extractBearerToken(header: string | undefined): string | undefined {
   if (!header) {

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import * as yaml from 'yaml';
 
 export interface OpenAPISpec {
@@ -193,6 +194,6 @@ function main() {
   console.log(`Generated ${tools.length} tools`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
