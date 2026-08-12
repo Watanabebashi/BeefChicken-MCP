@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createOAuthRoutes,
+  createTokenVerifier,
   isCleanHttpsUrl,
   type OAuthKvStore,
   type OAuthStores,
@@ -10,7 +11,7 @@ import {
   type StoredRefreshReplay,
   type StoredRefreshToken,
 } from '../src/oauth';
-import { importEncryptionKey, decryptSecret } from '../src/oauthCrypto';
+import { importEncryptionKey, encryptSecret, decryptSecret } from '../src/oauthCrypto';
 
 const TEST_ENCRYPTION_KEY_B64 = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
 
@@ -242,17 +243,23 @@ describe('OAuth token endpoint', () => {
   });
 
   it('does not extend client TTL on GET /authorize (only on a successful login)', async () => {
-    const clientId = await registerClient(app);
-    const { challenge } = await pkcePair();
-    const before = await stores.clients.get(clientId);
+    vi.useFakeTimers();
+    try {
+      const clientId = await registerClient(app);
+      const { challenge } = await pkcePair();
+      const before = await stores.clients.get(clientId);
 
-    await getAuthorizeCsrfToken(app, clientId, challenge);
-    const afterGet = await stores.clients.get(clientId);
-    expect(afterGet!.expiresAt).toBe(before!.expiresAt);
+      await getAuthorizeCsrfToken(app, clientId, challenge);
+      const afterGet = await stores.clients.get(clientId);
+      expect(afterGet!.expiresAt).toBe(before!.expiresAt);
 
-    await issueAuthCode(app, clientId, challenge);
-    const afterSuccessfulLogin = await stores.clients.get(clientId);
-    expect(afterSuccessfulLogin!.expiresAt).toBeGreaterThan(before!.expiresAt);
+      vi.advanceTimersByTime(1);
+      await issueAuthCode(app, clientId, challenge);
+      const afterSuccessfulLogin = await stores.clients.get(clientId);
+      expect(afterSuccessfulLogin!.expiresAt).toBeGreaterThan(before!.expiresAt);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('rejects POST /authorize for an already-expired client', async () => {
@@ -402,5 +409,176 @@ describe('OAuth token endpoint', () => {
     expect(replayFromOtherClient.status).toBe(400);
     const body = (await replayFromOtherClient.json()) as { error: string };
     expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects registration once the active client limit is reached', async () => {
+    const now = Date.now();
+    for (let i = 0; i < 1000; i++) {
+      await stores.clients.set(`prefilled-${i}`, { redirectUris: [REDIRECT_URI], expiresAt: now + 60_000 });
+    }
+
+    const res = await app.request('/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+    });
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('temporarily_unavailable');
+  });
+
+  it('re-renders the login form with an error when api_key is empty', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const csrfToken = await getAuthorizeCsrfToken(app, clientId, challenge);
+    const form = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      state: 'xyz',
+      code_challenge: challenge,
+      api_key: '',
+      csrf_token: csrfToken,
+    });
+    const res = await app.request('/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: `oauth_csrf=${csrfToken}` },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('APIキーを入力してください');
+  });
+
+  it('rejects /token with an expired authorization code', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const code = await issueAuthCode(app, clientId, challenge);
+    const record = await stores.authCodes.get(code);
+    await stores.authCodes.set(code, { ...record!, expiresAt: Date.now() - 1000 });
+
+    const res = await exchangeCode(app, clientId, code, 'irrelevant-verifier');
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects /token when redirect_uri does not match the one used to issue the code', async () => {
+    const clientId = await registerClient(app);
+    const { verifier, challenge } = await pkcePair();
+    const code = await issueAuthCode(app, clientId, challenge);
+
+    const form = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: 'https://different.example/callback',
+      code_verifier: verifier,
+      client_id: clientId,
+    });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects /token when client_id does not match the one used to issue the code', async () => {
+    const clientId = await registerClient(app);
+    const otherClientId = await registerClient(app);
+    const { verifier, challenge } = await pkcePair();
+    const code = await issueAuthCode(app, clientId, challenge);
+
+    const res = await exchangeCode(app, otherClientId, code, verifier);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects /token with an unsupported grant_type', async () => {
+    const form = new URLSearchParams({ grant_type: 'password', username: 'a', password: 'b' });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('unsupported_grant_type');
+  });
+
+  it('rejects GET /authorize when required parameters are missing', async () => {
+    const clientId = await registerClient(app);
+    const url = new URL('http://localhost/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', REDIRECT_URI);
+    const res = await app.request(url.pathname + url.search);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
+  });
+
+  it('rejects GET /authorize for an unknown client_id', async () => {
+    const { challenge } = await pkcePair();
+    const url = new URL('http://localhost/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', 'no-such-client');
+    url.searchParams.set('redirect_uri', REDIRECT_URI);
+    url.searchParams.set('state', 'xyz');
+    url.searchParams.set('code_challenge', challenge);
+    const res = await app.request(url.pathname + url.search);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_client');
+  });
+
+  it('rejects GET /authorize for an already-expired client', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const client = await stores.clients.get(clientId);
+    await stores.clients.set(clientId, { ...client!, expiresAt: Date.now() - 1000 });
+
+    const url = new URL('http://localhost/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', REDIRECT_URI);
+    url.searchParams.set('state', 'xyz');
+    url.searchParams.set('code_challenge', challenge);
+    const res = await app.request(url.pathname + url.search);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_client');
+  });
+});
+
+describe('createTokenVerifier', () => {
+  let accessTokens: MemoryKvStore<StoredAccessToken>;
+  let encryptionKey: CryptoKey;
+
+  beforeEach(async () => {
+    accessTokens = new MemoryKvStore<StoredAccessToken>();
+    encryptionKey = await importEncryptionKey(TEST_ENCRYPTION_KEY_B64);
+  });
+
+  it('rejects an unknown token', async () => {
+    const verifier = createTokenVerifier(accessTokens, encryptionKey);
+    await expect(verifier.verifyAccessToken('no-such-token')).rejects.toThrow(/unknown, expired, or revoked/);
+  });
+
+  it('rejects and deletes an expired token', async () => {
+    const encryptedApiKey = await encryptSecret(encryptionKey, 'expired_api_key');
+    await accessTokens.set('expired-token', { encryptedApiKey, clientId: 'c1', expiresAt: Date.now() - 1000 });
+
+    const verifier = createTokenVerifier(accessTokens, encryptionKey);
+    await expect(verifier.verifyAccessToken('expired-token')).rejects.toThrow(/unknown, expired, or revoked/);
+    expect(accessTokens.has('expired-token')).toBe(false);
+  });
+
+  it('resolves the decrypted API key for a valid token', async () => {
+    const encryptedApiKey = await encryptSecret(encryptionKey, 'live_api_key');
+    await accessTokens.set('valid-token', { encryptedApiKey, clientId: 'c1', expiresAt: Date.now() + 60_000 });
+
+    const verifier = createTokenVerifier(accessTokens, encryptionKey);
+    const authInfo = await verifier.verifyAccessToken('valid-token');
+    expect(authInfo.clientId).toBe('c1');
+    expect(authInfo.extra?.apiKey).toBe('live_api_key');
   });
 });

@@ -22,6 +22,24 @@ describe('ApiClient', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('appends an array query param once per item under the same key', async () => {
+    const requests: Request[] = [];
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      requests.push(new Request(input, init));
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+
+    const client = new ApiClient('https://api.example.com', 'test_key', fetchImpl);
+    await client.request('GET', '/api/blocks', { query: { tag: ['work', 'urgent'] } });
+
+    expect(requests).toHaveLength(1);
+    const url = new URL(requests[0].url);
+    expect(url.searchParams.getAll('tag')).toEqual(['work', 'urgent']);
+  });
+
   it('sends JSON body for POST requests', async () => {
     const requests: Request[] = [];
     const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
