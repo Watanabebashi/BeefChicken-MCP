@@ -9,3 +9,4 @@ oauth-state.db*
 .claude/
 coverage/
 src/generated/
+manifest.json
