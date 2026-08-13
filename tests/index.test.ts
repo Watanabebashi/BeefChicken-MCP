@@ -54,6 +54,13 @@ describe('Workers entrypoint (index.ts)', () => {
     expect(response.status).toBe(500);
   });
 
+  it('returns 404 for the OAuth metadata endpoints when PUBLIC_URL is entirely unset', async () => {
+    const authServerRes = await app.request('/.well-known/oauth-authorization-server', {}, {});
+    expect(authServerRes.status).toBe(404);
+    const protectedResourceRes = await app.request('/.well-known/oauth-protected-resource/mcp', {}, {});
+    expect(protectedResourceRes.status).toBe(404);
+  });
+
   it('returns 404 for /register when PUBLIC_URL is unset', async () => {
     const response = await app.request(
       '/register',
@@ -65,6 +72,78 @@ describe('Workers entrypoint (index.ts)', () => {
       {}
     );
     expect(response.status).toBe(404);
+  });
+
+  it('serves /mcp with an empty token when no Authorization header is sent and PUBLIC_URL is unset', async () => {
+    const response = await app.request(
+      '/mcp',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      },
+      { API_BASE_URL: TEST_BASE_URL }
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('reports server misconfiguration on /register when OAUTH_ENCRYPTION_KEY is malformed', async () => {
+    const env = {
+      PUBLIC_URL,
+      OAUTH_ALLOWED_REDIRECT_URIS: REDIRECT_URI,
+      OAUTH_ENCRYPTION_KEY: 'not-valid-base64!!!',
+      OAUTH_DB: createFakeD1Database(),
+    };
+    const response = await app.request(
+      '/register',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+      },
+      env
+    );
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain('Server misconfiguration');
+  });
+
+  it('reports a 500 on /register when PUBLIC_URL is not https', async () => {
+    const env = {
+      PUBLIC_URL: 'http://mcp.example.com',
+      OAUTH_ALLOWED_REDIRECT_URIS: REDIRECT_URI,
+      OAUTH_ENCRYPTION_KEY: await importTestEncryptionKey(),
+      OAUTH_DB: createFakeD1Database(),
+    };
+    const response = await app.request(
+      '/register',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+      },
+      env
+    );
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain('must be https');
+  });
+
+  it('reports a 500 on /register when OAUTH_ALLOWED_REDIRECT_URIS is not configured', async () => {
+    const env = {
+      PUBLIC_URL,
+      OAUTH_ENCRYPTION_KEY: await importTestEncryptionKey(),
+      OAUTH_DB: createFakeD1Database(),
+    };
+    const response = await app.request(
+      '/register',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+      },
+      env
+    );
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain('OAUTH_ALLOWED_REDIRECT_URIS is not configured');
   });
 
   it('wires up the D1-backed OAuth routes when fully configured', async () => {

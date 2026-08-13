@@ -169,6 +169,26 @@ describe('OAuth token endpoint', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects registration with no redirect_uris at all', async () => {
+    const res = await app.request('/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_client_metadata');
+  });
+
+  it('rejects registration with an unparseable JSON body', async () => {
+    const res = await app.request('/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not json',
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('completes the authorization_code + PKCE flow', async () => {
     const clientId = await registerClient(app);
     const { verifier, challenge } = await pkcePair();
@@ -252,6 +272,83 @@ describe('OAuth token endpoint', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('rejects POST /authorize with a completely empty form body', async () => {
+    const res = await app.request('/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: '',
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
+  });
+
+  it('rejects POST /authorize for an unknown client_id', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const csrfToken = await getAuthorizeCsrfToken(app, clientId, challenge);
+    const form = new URLSearchParams({
+      client_id: 'no-such-client',
+      redirect_uri: REDIRECT_URI,
+      state: 'xyz',
+      code_challenge: challenge,
+      api_key: 'test_api_key',
+      csrf_token: csrfToken,
+    });
+    const res = await app.request('/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: `oauth_csrf=${csrfToken}` },
+      body: form.toString(),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
+  });
+
+  it("rejects POST /authorize when redirect_uri is not one of the client's registered URIs", async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const csrfToken = await getAuthorizeCsrfToken(app, clientId, challenge);
+    const form = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: 'https://not-registered.example/callback',
+      state: 'xyz',
+      code_challenge: challenge,
+      api_key: 'test_api_key',
+      csrf_token: csrfToken,
+    });
+    const res = await app.request('/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: `oauth_csrf=${csrfToken}` },
+      body: form.toString(),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
+  });
+
+  it('rejects POST /authorize with a missing code_challenge', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const csrfToken = await getAuthorizeCsrfToken(app, clientId, challenge);
+    const form = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      state: 'xyz',
+      code_challenge: '',
+      api_key: 'test_api_key',
+      csrf_token: csrfToken,
+    });
+    const res = await app.request('/authorize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: `oauth_csrf=${csrfToken}` },
+      body: form.toString(),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
   });
 
   it('rejects POST /authorize for an already-expired client', async () => {
@@ -374,6 +471,93 @@ describe('OAuth token endpoint', () => {
     await expect(decryptSecret(encryptionKey, storedRefreshToken!.encryptedApiKey)).resolves.toBe('test_api_key');
   });
 
+  it('rejects a refresh_token grant with the refresh_token field entirely absent', async () => {
+    const clientId = await registerClient(app);
+    const form = new URLSearchParams({ grant_type: 'refresh_token', client_id: clientId });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects a refresh_token grant with the client_id field entirely absent', async () => {
+    const form = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: 'irrelevant-token' });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects a refresh_token grant with an unknown refresh token', async () => {
+    const clientId = await registerClient(app);
+    const form = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: 'no-such-refresh-token',
+      client_id: clientId,
+    });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects a refresh_token grant with an expired refresh token', async () => {
+    const clientId = await registerClient(app);
+    const { verifier, challenge } = await pkcePair();
+    const code = await issueAuthCode(app, clientId, challenge);
+    const pair = (await (await exchangeCode(app, clientId, code, verifier)).json()) as { refresh_token: string };
+    const record = await stores.refreshTokens.get(pair.refresh_token);
+    await stores.refreshTokens.set(pair.refresh_token, { ...record!, expiresAt: Date.now() - 1000 });
+
+    const form = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: pair.refresh_token,
+      client_id: clientId,
+    });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
+  it('rejects a first-time refresh_token exchange from a client_id that does not match the token record', async () => {
+    const clientId = await registerClient(app);
+    const otherClientId = await registerClient(app);
+    const { verifier, challenge } = await pkcePair();
+    const code = await issueAuthCode(app, clientId, challenge);
+    const pair = (await (await exchangeCode(app, clientId, code, verifier)).json()) as { refresh_token: string };
+
+    const form = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: pair.refresh_token,
+      client_id: otherClientId,
+    });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
   it('rejects a replayed refresh_token presented by a different client_id', async () => {
     const clientId = await registerClient(app);
     const otherClientId = await registerClient(app);
@@ -487,6 +671,18 @@ describe('OAuth token endpoint', () => {
     expect(body.error).toBe('invalid_grant');
   });
 
+  it('rejects /token for authorization_code with all identifying fields absent', async () => {
+    const form = new URLSearchParams({ grant_type: 'authorization_code' });
+    const res = await app.request('/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('invalid_grant');
+  });
+
   it('rejects /token with an unsupported grant_type', async () => {
     const form = new URLSearchParams({ grant_type: 'password', username: 'a', password: 'b' });
     const res = await app.request('/token', {
@@ -521,6 +717,35 @@ describe('OAuth token endpoint', () => {
     const res = await app.request(url.pathname + url.search);
     expect(res.status).toBe(400);
     expect(await res.text()).toBe('invalid_client');
+  });
+
+  it('rejects GET /authorize with a non-code response_type', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const url = new URL('http://localhost/authorize');
+    url.searchParams.set('response_type', 'token');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', REDIRECT_URI);
+    url.searchParams.set('state', 'xyz');
+    url.searchParams.set('code_challenge', challenge);
+    const res = await app.request(url.pathname + url.search);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe('invalid_request');
+  });
+
+  it('rejects GET /authorize with an unsupported code_challenge_method', async () => {
+    const clientId = await registerClient(app);
+    const { challenge } = await pkcePair();
+    const url = new URL('http://localhost/authorize');
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', REDIRECT_URI);
+    url.searchParams.set('state', 'xyz');
+    url.searchParams.set('code_challenge', challenge);
+    url.searchParams.set('code_challenge_method', 'plain');
+    const res = await app.request(url.pathname + url.search);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('unsupported code_challenge_method');
   });
 
   it('rejects GET /authorize for an already-expired client', async () => {
