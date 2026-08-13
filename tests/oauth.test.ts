@@ -75,11 +75,7 @@ async function registerClient(app: ReturnType<typeof createOAuthRoutes>) {
   return body.client_id;
 }
 
-async function getAuthorizeCsrfToken(
-  app: ReturnType<typeof createOAuthRoutes>,
-  clientId: string,
-  challenge: string
-) {
+async function getAuthorizeCsrfToken(app: ReturnType<typeof createOAuthRoutes>, clientId: string, challenge: string) {
   const url = new URL('http://localhost/authorize');
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', clientId);
@@ -97,11 +93,7 @@ async function getAuthorizeCsrfToken(
   return match[1];
 }
 
-async function issueAuthCode(
-  app: ReturnType<typeof createOAuthRoutes>,
-  clientId: string,
-  challenge: string
-) {
+async function issueAuthCode(app: ReturnType<typeof createOAuthRoutes>, clientId: string, challenge: string) {
   const csrfToken = await getAuthorizeCsrfToken(app, clientId, challenge);
   const form = new URLSearchParams({
     client_id: clientId,

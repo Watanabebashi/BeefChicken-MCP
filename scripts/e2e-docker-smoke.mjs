@@ -38,7 +38,10 @@ async function main() {
   const res = await callMcp('tools/list');
   must(res.status === 200, `/mcp tools/list returns 200 (got ${res.status})`);
   const text = await res.text();
-  must(text.includes('tasks_get'), 'tools/list includes the tool generated from docs/openapi.yaml at container startup');
+  must(
+    text.includes('tasks_get'),
+    'tools/list includes the tool generated from docs/openapi.yaml at container startup'
+  );
 
   console.log('\nAll Docker image smoke checks passed.');
 }

@@ -14,7 +14,11 @@ async function waitUntilReady() {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${BASE}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      const res = await fetch(`${BASE}/mcp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
       if (res.status) {
         return;
       }
@@ -45,9 +49,15 @@ async function main() {
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'tasks_get', arguments: {} } }),
   });
-  must(withoutBearer.status === 200, `/mcp tools/call without a bearer token still returns 200 (got ${withoutBearer.status})`);
+  must(
+    withoutBearer.status === 200,
+    `/mcp tools/call without a bearer token still returns 200 (got ${withoutBearer.status})`
+  );
   const withoutBearerText = await withoutBearer.text();
-  must(withoutBearerText.includes('API key is required'), 'tool call without a bearer token is rejected as isError with "API key is required"');
+  must(
+    withoutBearerText.includes('API key is required'),
+    'tool call without a bearer token is rejected as isError with "API key is required"'
+  );
 
   const wellKnown = await fetch(`${BASE}/.well-known/oauth-authorization-server`);
   must(wellKnown.status === 404, `OAuth metadata endpoint is 404 when PUBLIC_URL is unset (got ${wellKnown.status})`);

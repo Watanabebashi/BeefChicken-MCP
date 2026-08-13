@@ -57,7 +57,11 @@ describe('Workers entrypoint (index.ts)', () => {
   it('returns 404 for /register when PUBLIC_URL is unset', async () => {
     const response = await app.request(
       '/register',
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }) },
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+      },
       {}
     );
     expect(response.status).toBe(404);
@@ -153,7 +157,11 @@ describe('Workers entrypoint (index.ts)', () => {
       '/mcp',
       {
         method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: 'Bearer whatever' },
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+          authorization: 'Bearer whatever',
+        },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
       },
       env
@@ -173,7 +181,11 @@ describe('Workers entrypoint (index.ts)', () => {
 
     const registerRes = await app.request(
       '/register',
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }) },
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [REDIRECT_URI] }),
+      },
       env
     );
     const { client_id } = (await registerRes.json()) as { client_id: string };

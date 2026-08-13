@@ -1,5 +1,11 @@
 import { createMcpHonoApp } from '@modelcontextprotocol/hono';
-import { createMcpHandler, requireBearerAuth, getOAuthProtectedResourceMetadataUrl, oauthMetadataResponse, type AuthMetadataOptions } from '@modelcontextprotocol/server';
+import {
+  createMcpHandler,
+  requireBearerAuth,
+  getOAuthProtectedResourceMetadataUrl,
+  oauthMetadataResponse,
+  type AuthMetadataOptions,
+} from '@modelcontextprotocol/server';
 import type { Context } from 'hono';
 import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
@@ -33,7 +39,12 @@ function getAllowedRedirectUris(raw: string | undefined): Set<string> {
   if (typeof raw !== 'string' || raw.length === 0) {
     return new Set();
   }
-  return new Set(raw.split(',').map((u) => u.trim()).filter(Boolean));
+  return new Set(
+    raw
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean)
+  );
 }
 
 function isMisconfigured(env: Env): boolean {

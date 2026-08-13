@@ -1,5 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
-import type { OAuthKvStore, OAuthStores, StoredAccessToken, StoredAuthCode, StoredClient, StoredRefreshReplay, StoredRefreshToken } from './oauth';
+import type {
+  OAuthKvStore,
+  OAuthStores,
+  StoredAccessToken,
+  StoredAuthCode,
+  StoredClient,
+  StoredRefreshReplay,
+  StoredRefreshToken,
+} from './oauth';
 
 function prepareStatements(db: DatabaseSync) {
   return {

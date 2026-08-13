@@ -206,7 +206,9 @@ describe('createNodeApp', () => {
     authorizeUrl.searchParams.set('redirect_uri', redirectUri);
     authorizeUrl.searchParams.set('state', 'xyz');
     authorizeUrl.searchParams.set('code_challenge', challenge);
-    const getAuthRes = await app.request(authorizeUrl.pathname + authorizeUrl.search, { headers: { host: '127.0.0.1' } });
+    const getAuthRes = await app.request(authorizeUrl.pathname + authorizeUrl.search, {
+      headers: { host: '127.0.0.1' },
+    });
     expect(getAuthRes.status).toBe(200);
     const setCookie = getAuthRes.headers.get('set-cookie') ?? '';
     const csrfToken = setCookie.match(/oauth_csrf=([^;]+)/)?.[1];
@@ -222,7 +224,11 @@ describe('createNodeApp', () => {
     });
     const postAuthRes = await app.request('/authorize', {
       method: 'POST',
-      headers: { host: '127.0.0.1', 'content-type': 'application/x-www-form-urlencoded', cookie: `oauth_csrf=${csrfToken}` },
+      headers: {
+        host: '127.0.0.1',
+        'content-type': 'application/x-www-form-urlencoded',
+        cookie: `oauth_csrf=${csrfToken}`,
+      },
       body: form.toString(),
       redirect: 'manual',
     });

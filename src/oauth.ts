@@ -1,7 +1,13 @@
 import { Buffer } from 'node:buffer';
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
-import { OAuthError, OAuthErrorCode, type OAuthTokenVerifier, type OAuthMetadata, type AuthInfo } from '@modelcontextprotocol/server';
+import {
+  OAuthError,
+  OAuthErrorCode,
+  type OAuthTokenVerifier,
+  type OAuthMetadata,
+  type AuthInfo,
+} from '@modelcontextprotocol/server';
 import { encryptSecret, decryptSecret } from './oauthCrypto';
 
 const AUTH_CODE_TTL_MS = 60_000;
@@ -89,7 +95,10 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export function createTokenVerifier(accessTokens: OAuthKvStore<StoredAccessToken>, encryptionKey: CryptoKey): OAuthTokenVerifier {
+export function createTokenVerifier(
+  accessTokens: OAuthKvStore<StoredAccessToken>,
+  encryptionKey: CryptoKey
+): OAuthTokenVerifier {
   return {
     async verifyAccessToken(token) {
       const record = await accessTokens.get(token);
@@ -133,7 +142,11 @@ export function isCleanHttpsUrl(value: string): boolean {
   }
 }
 
-export function createOAuthRoutes(allowedRedirectUris: ReadonlySet<string>, stores: OAuthStores, encryptionKey: CryptoKey): Hono {
+export function createOAuthRoutes(
+  allowedRedirectUris: ReadonlySet<string>,
+  stores: OAuthStores,
+  encryptionKey: CryptoKey
+): Hono {
   const app = new Hono();
   const { clients, authCodes, accessTokens, refreshTokens, refreshReplays } = stores;
 
@@ -152,9 +165,17 @@ export function createOAuthRoutes(allowedRedirectUris: ReadonlySet<string>, stor
     const rawUris = (body as { redirect_uris?: unknown }).redirect_uris;
     const redirectUris = Array.isArray(rawUris) ? rawUris.filter((u): u is string => typeof u === 'string') : [];
     if (redirectUris.length === 0 || !redirectUris.every((u) => isCleanHttpsUrl(u) && allowedRedirectUris.has(u))) {
-      return c.json({ error: 'invalid_client_metadata', error_description: 'redirect_uris must be https and pre-approved' }, 400);
+      return c.json(
+        { error: 'invalid_client_metadata', error_description: 'redirect_uris must be https and pre-approved' },
+        400
+      );
     }
-    await Promise.all([authCodes.sweepExpired(), accessTokens.sweepExpired(), refreshTokens.sweepExpired(), clients.sweepExpired()]);
+    await Promise.all([
+      authCodes.sweepExpired(),
+      accessTokens.sweepExpired(),
+      refreshTokens.sweepExpired(),
+      clients.sweepExpired(),
+    ]);
     if ((await clients.countActive()) >= MAX_CLIENTS) {
       return c.json({ error: 'temporarily_unavailable', error_description: 'client registration limit reached' }, 429);
     }
@@ -181,7 +202,12 @@ export function createOAuthRoutes(allowedRedirectUris: ReadonlySet<string>, stor
       return c.text('unsupported code_challenge_method (S256 only)', 400);
     }
     const client = await clients.get(client_id);
-    if (!client || client.expiresAt < Date.now() || !client.redirectUris.includes(redirect_uri) || !allowedRedirectUris.has(redirect_uri)) {
+    if (
+      !client ||
+      client.expiresAt < Date.now() ||
+      !client.redirectUris.includes(redirect_uri) ||
+      !allowedRedirectUris.has(redirect_uri)
+    ) {
       return c.text('invalid_client', 400);
     }
     const csrfToken = randomToken(16);
@@ -213,7 +239,13 @@ export function createOAuthRoutes(allowedRedirectUris: ReadonlySet<string>, stor
     const submittedCsrfToken = String(form.csrf_token ?? '');
 
     const client = await clients.get(clientId);
-    if (!client || client.expiresAt < Date.now() || !client.redirectUris.includes(redirectUri) || !allowedRedirectUris.has(redirectUri) || !codeChallenge) {
+    if (
+      !client ||
+      client.expiresAt < Date.now() ||
+      !client.redirectUris.includes(redirectUri) ||
+      !allowedRedirectUris.has(redirectUri) ||
+      !codeChallenge
+    ) {
       return c.text('invalid_request', 400);
     }
 
@@ -313,13 +345,22 @@ export function createOAuthRoutes(allowedRedirectUris: ReadonlySet<string>, stor
   return app;
 }
 
-async function issueTokenPair(stores: OAuthStores, apiKey: string, clientId: string, encryptionKey: CryptoKey): Promise<TokenPairResponse> {
+async function issueTokenPair(
+  stores: OAuthStores,
+  apiKey: string,
+  clientId: string,
+  encryptionKey: CryptoKey
+): Promise<TokenPairResponse> {
   await Promise.all([stores.accessTokens.sweepExpired(), stores.refreshTokens.sweepExpired()]);
 
   const encryptedApiKey = await encryptSecret(encryptionKey, apiKey);
 
   const accessToken = randomToken();
-  await stores.accessTokens.set(accessToken, { encryptedApiKey, clientId, expiresAt: Date.now() + ACCESS_TOKEN_TTL_MS });
+  await stores.accessTokens.set(accessToken, {
+    encryptedApiKey,
+    clientId,
+    expiresAt: Date.now() + ACCESS_TOKEN_TTL_MS,
+  });
 
   const refreshToken = randomToken();
   await stores.refreshTokens.set(refreshToken, {

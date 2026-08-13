@@ -19,7 +19,9 @@ describe('generateTools path safety', () => {
   });
 
   it('rejects an absolute URL path', () => {
-    expect(() => generateTools(specWithPath('https://attacker.example/steal'))).toThrow(/resolves to a different origin/);
+    expect(() => generateTools(specWithPath('https://attacker.example/steal'))).toThrow(
+      /resolves to a different origin/
+    );
   });
 
   it('rejects a protocol-relative path', () => {

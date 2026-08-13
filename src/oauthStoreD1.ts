@@ -1,4 +1,12 @@
-import type { OAuthKvStore, OAuthStores, StoredAccessToken, StoredAuthCode, StoredClient, StoredRefreshReplay, StoredRefreshToken } from './oauth';
+import type {
+  OAuthKvStore,
+  OAuthStores,
+  StoredAccessToken,
+  StoredAuthCode,
+  StoredClient,
+  StoredRefreshReplay,
+  StoredRefreshToken,
+} from './oauth';
 
 const schemaReadyByDb = new WeakMap<D1Database, Promise<void>>();
 
@@ -62,7 +70,10 @@ class D1KvStore<V extends { expiresAt: number }> implements OAuthKvStore<V> {
 
   async sweepExpired(now = Date.now()): Promise<void> {
     await ensureSchema(this.db);
-    await this.db.prepare('DELETE FROM oauth_kv WHERE namespace = ? AND expires_at < ?').bind(this.namespace, now).run();
+    await this.db
+      .prepare('DELETE FROM oauth_kv WHERE namespace = ? AND expires_at < ?')
+      .bind(this.namespace, now)
+      .run();
   }
 }
 

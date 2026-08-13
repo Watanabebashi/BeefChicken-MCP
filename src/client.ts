@@ -45,7 +45,9 @@ export class ApiClient {
     const baseOrigin = new URL(this.baseUrl).origin;
     const url = new URL(path, this.baseUrl);
     if (url.origin !== baseOrigin) {
-      throw new Error(`Refusing cross-origin request path "${path}" (resolved to ${url.origin}, expected ${baseOrigin})`);
+      throw new Error(
+        `Refusing cross-origin request path "${path}" (resolved to ${url.origin}, expected ${baseOrigin})`
+      );
     }
     if (query === undefined) {
       return url;

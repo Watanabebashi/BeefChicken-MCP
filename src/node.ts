@@ -1,7 +1,13 @@
 import { pathToFileURL } from 'node:url';
 import { serve } from '@hono/node-server';
 import { createMcpHonoApp } from '@modelcontextprotocol/hono';
-import { createMcpHandler, requireBearerAuth, getOAuthProtectedResourceMetadataUrl, oauthMetadataResponse, type AuthMetadataOptions } from '@modelcontextprotocol/server';
+import {
+  createMcpHandler,
+  requireBearerAuth,
+  getOAuthProtectedResourceMetadataUrl,
+  oauthMetadataResponse,
+  type AuthMetadataOptions,
+} from '@modelcontextprotocol/server';
 import type { Context } from 'hono';
 import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
@@ -30,13 +36,15 @@ export async function createNodeApp() {
     }
     const allowedRedirectUris = getAllowedRedirectUris();
     if (allowedRedirectUris.size === 0) {
-      throw new Error('OAUTH_ALLOWED_REDIRECT_URIS must be set to a non-empty, comma-separated list when PUBLIC_URL is set.');
+      throw new Error(
+        'OAUTH_ALLOWED_REDIRECT_URIS must be set to a non-empty, comma-separated list when PUBLIC_URL is set.'
+      );
     }
     const rawEncryptionKey = process.env.OAUTH_ENCRYPTION_KEY;
     if (!rawEncryptionKey) {
       throw new Error(
         'OAUTH_ENCRYPTION_KEY must be set when PUBLIC_URL is set. ' +
-          'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"'
+          "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
       );
     }
     const encryptionKey = await importEncryptionKey(rawEncryptionKey);
@@ -48,8 +56,14 @@ export async function createNodeApp() {
     const { createSqliteStores } = await import('./oauthStore');
     const stores = createSqliteStores();
     app.route('/', createOAuthRoutes(allowedRedirectUris, stores, encryptionKey));
-    app.all('/.well-known/oauth-authorization-server', (c) => oauthMetadataResponse(c.req.raw, authMetadataOptions!) ?? c.notFound());
-    app.all('/.well-known/oauth-protected-resource/mcp', (c) => oauthMetadataResponse(c.req.raw, authMetadataOptions!) ?? c.notFound());
+    app.all(
+      '/.well-known/oauth-authorization-server',
+      (c) => oauthMetadataResponse(c.req.raw, authMetadataOptions!) ?? c.notFound()
+    );
+    app.all(
+      '/.well-known/oauth-protected-resource/mcp',
+      (c) => oauthMetadataResponse(c.req.raw, authMetadataOptions!) ?? c.notFound()
+    );
     bearerGate = requireBearerAuth({
       verifier: createTokenVerifier(stores.accessTokens, encryptionKey),
       resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(authMetadataOptions.resourceServerUrl),
@@ -102,7 +116,10 @@ function extractBearerToken(header: string | undefined): string | undefined {
 function getAllowedHosts(): string[] | undefined {
   const raw = process.env.ALLOWED_HOSTS;
   if (typeof raw === 'string' && raw.length > 0) {
-    return raw.split(',').map((h) => h.trim()).filter(Boolean);
+    return raw
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean);
   }
   return undefined;
 }
@@ -110,7 +127,10 @@ function getAllowedHosts(): string[] | undefined {
 function getAllowedOrigins(): string[] | undefined {
   const raw = process.env.ALLOWED_ORIGINS;
   if (typeof raw === 'string' && raw.length > 0) {
-    return raw.split(',').map((h) => h.trim()).filter(Boolean);
+    return raw
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean);
   }
   return undefined;
 }
@@ -120,5 +140,10 @@ function getAllowedRedirectUris(): Set<string> {
   if (typeof raw !== 'string' || raw.length === 0) {
     return new Set();
   }
-  return new Set(raw.split(',').map((u) => u.trim()).filter(Boolean));
+  return new Set(
+    raw
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean)
+  );
 }

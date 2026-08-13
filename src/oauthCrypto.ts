@@ -11,7 +11,9 @@ export function assertValidEncryptionKeyFormat(base64Key: string): Uint8Array {
     throw new Error('OAUTH_ENCRYPTION_KEY must be valid base64');
   }
   if (raw.length !== KEY_BYTES) {
-    throw new Error(`OAUTH_ENCRYPTION_KEY must decode to exactly ${KEY_BYTES} bytes (a 256-bit AES-GCM key), got ${raw.length}`);
+    throw new Error(
+      `OAUTH_ENCRYPTION_KEY must decode to exactly ${KEY_BYTES} bytes (a 256-bit AES-GCM key), got ${raw.length}`
+    );
   }
   return raw;
 }

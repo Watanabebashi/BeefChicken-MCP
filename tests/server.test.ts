@@ -5,10 +5,9 @@ import { createServer, type ServerAuthInfo } from '../src/server';
 const TEST_BASE_URL = 'https://api.example.com';
 
 function makeHandler(fetchImpl?: typeof fetch) {
-  return createMcpHandler(
-    (ctx) => createServer({ authInfo: ctx.authInfo as ServerAuthInfo, fetchImpl }),
-    { responseMode: 'json' }
-  );
+  return createMcpHandler((ctx) => createServer({ authInfo: ctx.authInfo as ServerAuthInfo, fetchImpl }), {
+    responseMode: 'json',
+  });
 }
 
 async function post(handler: ReturnType<typeof makeHandler>, body: object, token?: string) {
@@ -109,15 +108,12 @@ describe('MCP server', () => {
     const listResponse = await post(handler, { jsonrpc: '2.0', id: 4, method: 'tools/list' });
     expect(listResponse.status).toBe(200);
 
-    const callResponse = await post(
-      handler,
-      {
-        jsonrpc: '2.0',
-        id: 5,
-        method: 'tools/call',
-        params: { name: 'tasks_get', arguments: { completed: false } },
-      }
-    );
+    const callResponse = await post(handler, {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: { name: 'tasks_get', arguments: { completed: false } },
+    });
     expect(callResponse.status).toBe(200);
     const payload = parseSse(await callResponse.text()) as {
       result: { isError: boolean; content: Array<{ text: string }> };

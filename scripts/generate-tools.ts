@@ -89,10 +89,11 @@ function makeToolName(operation: Record<string, unknown>, method: string, path: 
   if (typeof operation.operationId === 'string' && operation.operationId.length > 0) {
     return operation.operationId;
   }
-  const segments = path.replace(/^\/api\//, '').split('/').filter(Boolean);
-  const normalized = segments
-    .map((segment) => segment.replace(/^\{(.+)\}$/, '$1').replace(/-/g, '_'))
-    .join('_');
+  const segments = path
+    .replace(/^\/api\//, '')
+    .split('/')
+    .filter(Boolean);
+  const normalized = segments.map((segment) => segment.replace(/^\{(.+)\}$/, '$1').replace(/-/g, '_')).join('_');
   return `${normalized}_${method.toLowerCase()}`;
 }
 

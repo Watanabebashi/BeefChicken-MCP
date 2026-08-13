@@ -39,8 +39,18 @@ describe('createD1Stores', () => {
   it('counts only active (non-expired) entries', async () => {
     const stores = createD1Stores(createFakeD1Database());
     const now = Date.now();
-    await stores.refreshTokens.set('active', { encryptedApiKey: 'a', clientId: 'c', expiresAt: now + 60_000, accessToken: 'at' });
-    await stores.refreshTokens.set('expired', { encryptedApiKey: 'a', clientId: 'c', expiresAt: now - 60_000, accessToken: 'at' });
+    await stores.refreshTokens.set('active', {
+      encryptedApiKey: 'a',
+      clientId: 'c',
+      expiresAt: now + 60_000,
+      accessToken: 'at',
+    });
+    await stores.refreshTokens.set('expired', {
+      encryptedApiKey: 'a',
+      clientId: 'c',
+      expiresAt: now - 60_000,
+      accessToken: 'at',
+    });
     expect(await stores.refreshTokens.countActive(now)).toBe(1);
   });
 
