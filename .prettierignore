@@ -1,0 +1,10 @@
+coverage/
+node_modules/
+src/generated/
+.wrangler/
+manifest.json
+package-lock.json
+
+# Prose and sample data are out of scope for the code formatter.
+*.md
+docs/openapi.yaml

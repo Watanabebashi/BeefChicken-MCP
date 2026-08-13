@@ -22,6 +22,8 @@ Run the full check locally — this is also what CI enforces:
 ```bash
 npm run typecheck
 npm test
+npm run lint
+npm run format:check
 ```
 
 If you changed `docs/openapi.yaml`, re-run `npm run generate` so `src/generated/tools.json` (gitignored, generated on build/deploy/container startup) reflects it before testing.

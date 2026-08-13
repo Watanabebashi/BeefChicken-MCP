@@ -27,6 +27,21 @@ npm test
 npm run typecheck
 ```
 
+## Lint / フォーマット
+
+```bash
+npm run lint          # ESLint（typescript-eslint）
+npm run lint:fix      # 自動修正可能な違反を修正
+npm run format:check  # Prettier フォーマットチェック
+npm run format        # Prettier で自動整形
+```
+
+CIの `lint` ジョブが `npm run lint` と `npm run format:check` を実行します。
+
+## カバレッジ閾値
+
+`vitest.config.ts` の `coverage.thresholds` で全体（statements/branches/functions/lines）90%を下回るとCIが失敗します。`bin/**` と `scripts/e2e-*.mjs`（サブプロセスとしてのみ実行され、v8カバレッジが計測できないエントリーポイント）は分母から除外しています。閾値は2026-08-13時点の実測値（約94%）から数ポイント低く設定した安全マージンであり、残存ギャップ（`src/stdio.ts` / `src/node.ts` / `scripts/generate-tools.ts` の `main()` などCLI起動部分）が埋まるにつれて段階的に引き上げる想定です。
+
 ## OpenAPI 更新時
 
 `docs/openapi.yaml` を更新したら、以下を再実行してください。

@@ -27,6 +27,21 @@ npm test
 npm run typecheck
 ```
 
+## Lint / formatting
+
+```bash
+npm run lint          # ESLint (typescript-eslint)
+npm run lint:fix      # Auto-fix fixable violations
+npm run format:check  # Prettier formatting check
+npm run format        # Auto-format with Prettier
+```
+
+The CI `lint` job runs `npm run lint` and `npm run format:check`.
+
+## Coverage thresholds
+
+`vitest.config.ts` sets `coverage.thresholds` to fail CI if overall statements/branches/functions/lines coverage drops below 90%. `bin/**` and `scripts/e2e-*.mjs` (entry points that only ever run as a spawned subprocess, which v8 coverage can't observe) are excluded from the denominator. The threshold is a safety margin a few points below the actual measurement taken on 2026-08-13 (~94%), meant to be ratcheted up as the remaining gaps close — mainly the `main()`/CLI-entry guards in `src/stdio.ts`, `src/node.ts`, and `scripts/generate-tools.ts`.
+
 ## When updating the OpenAPI spec
 
 After updating `docs/openapi.yaml`, re-run the following:
