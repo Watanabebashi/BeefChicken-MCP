@@ -123,6 +123,29 @@ docker run -p 3000:3000 \
 ### 3. クライアントから接続
 発行された URL に対し `Authorization: Bearer <対象APIのAPIキー>` ヘッダーを付けて MCP クライアントに設定します。
 
+### 4. ローカル MCP クライアント（Claude Desktop 等）から直接使う場合
+
+Claude Desktop / Claude Code のように MCP サーバーをサブプロセスとして起動するクライアントには、デプロイ不要で `npx` 経由で直接接続できます。設定ファイル（例: `claude_desktop_config.json`）に以下を追加してください。
+
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "command": "npx",
+      "args": ["beefchicken-mcp", "--openapi", "/絶対パス/to/your-api-openapi.yaml"],
+      "env": {
+        "API_KEY": "<対象APIのAPIキー>",
+        "API_BASE_URL": "https://api.example.com"
+      }
+    }
+  }
+}
+```
+
+- `--openapi` に対象APIの OpenAPI 仕様書への絶対パスを指定すると、起動のたびにオンメモリでツール定義を生成します（事前の `npm run generate` は不要）。フラグを省いた位置引数（`["beefchicken-mcp", "/絶対パス/to/your-api-openapi.yaml"]`）でも同じ動作です。パスを一切指定しなかった場合は、クローン済みリポジトリ内で事前に生成済みの `src/generated/tools.json` にフォールバックします（無ければ起動時にエラーで停止します）。cwd 相対のデフォルト仕様書は意図的に持ちません。MCPクライアントがサブプロセスを起動する際の cwd は予測できないため、必ず絶対パスで指定してください。
+- `API_KEY` は必須です。stdio モードは Web版向けの簡易OAuthサーバーを経由せず、`API_KEY` の値をそのまま対象APIへの `Authorization: Bearer` として使います。
+- リポジトリを clone した状態でクライアントに登録したい場合は、`command` を `npx`、`args` を `["tsx", "src/stdio.ts", "--openapi", "./docs/openapi.yaml"]` にし、`cwd`（対応しているクライアントの場合）をリポジトリのルートに設定しても同じエントリーポイント（`src/stdio.ts`）が起動します（`npm run stdio` は `npm` のバナー出力が標準出力に混ざり stdio の JSON-RPC 通信を壊すため、クライアント設定には使わないでください。手元のターミナルで単体動作を確認する用途に留めてください）。
+
 ---
 
 ## 📚 ドキュメント

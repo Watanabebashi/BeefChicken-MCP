@@ -1,9 +1,21 @@
 {
   "name": "beefchicken-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Generates an MCP server from an OpenAPI specification, deployable on Cloudflare Workers and Node.js hosting.",
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "beefchicken-mcp": "bin/beefchicken-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "src/stdio.ts",
+    "src/server.ts",
+    "src/client.ts",
+    "src/logging.ts",
+    "src/tools/executor.ts",
+    "scripts/generate-tools.ts"
+  ],
   "engines": {
     "node": ">=22.5.0"
   },
@@ -22,6 +34,7 @@
     "deploy": "wrangler deploy",
     "start": "tsx src/node.ts",
     "node:dev": "tsx src/node.ts",
+    "stdio": "tsx src/stdio.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

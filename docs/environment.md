@@ -5,6 +5,7 @@
 | 名前 | 説明 | 必須 |
 |---|---|---|
 | `API_BASE_URL` | 対象APIのベース URL。デフォルト値は持たず、未設定のままツールを呼び出すとサーバー設定不備のエラーを返します | **必須** |
+| `API_KEY` | stdioエントリーポイント（`src/stdio.ts`）専用。OAuth層を経由せず対象APIキーを直接渡す（`Authorization: Bearer` ヘッダーの代わり）。Workers/Node HTTPエントリーポイントでは使用しない | **stdio実行時は必須** |
 | `MCP_SERVER_NAME` | MCPサーバー名（デフォルト: `beefchicken-mcp`） | 任意 |
 | `MCP_SERVER_DESCRIPTION` | MCPサーバーの説明文（デフォルト: 汎用文言） | 任意 |
 | `HOST` | Node.js 時の bind アドレス（デフォルト: `127.0.0.1`） | 任意 |

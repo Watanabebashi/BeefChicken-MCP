@@ -20,6 +20,14 @@ npx wrangler dev
 
 `http://localhost:8787/mcp` でアクセスできます。
 
+### stdio（ローカル MCP クライアント向け）
+
+```bash
+API_KEY=<対象APIのAPIキー> npm run stdio -- --openapi ./docs/openapi.yaml
+```
+
+標準入出力でJSON-RPCをやり取りします（HTTPサーバーは起動しません）。`--openapi` を省略すると `src/generated/tools.json`（要 `npm run generate`）にフォールバックします。Claude Desktop 等のクライアントに登録する場合の手順は README の「ローカル MCP クライアント（Claude Desktop 等）から直接使う場合」を参照してください（`npm run stdio` はnpmのバナー出力が標準出力に混ざるため、手元での動作確認用途に留め、クライアント設定には使わないでください）。
+
 ## テスト
 
 ```bash

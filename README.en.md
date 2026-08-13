@@ -123,6 +123,29 @@ The image is published on [GHCR](https://github.com/Watanabebashi/BeefChicken-MC
 ### 3. Connect from Client
 Configure your MCP client with the issued URL along with an `Authorization: Bearer <TARGET_API_KEY>` header.
 
+### 4. Use directly from a local MCP client (Claude Desktop, etc.)
+
+For MCP clients that launch the server as a local subprocess (Claude Desktop, Claude Code), you can connect via `npx` with no deployment at all. Add this to your client config (e.g. `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-api": {
+      "command": "npx",
+      "args": ["beefchicken-mcp", "--openapi", "/absolute/path/to/your-api-openapi.yaml"],
+      "env": {
+        "API_KEY": "<TARGET_API_KEY>",
+        "API_BASE_URL": "https://api.example.com"
+      }
+    }
+  }
+}
+```
+
+- `--openapi` points to your target API's OpenAPI spec (absolute path); tool definitions are generated in memory on every startup, so no prior `npm run generate` step is needed. A bare positional path (`["beefchicken-mcp", "/absolute/path/to/your-api-openapi.yaml"]`) works the same way. With no path at all, it falls back to the pre-generated `src/generated/tools.json` inside a cloned repo (the process exits with an error if neither is available). There is deliberately no cwd-relative default spec: the cwd an MCP client launches the subprocess with is unpredictable, so always pass an absolute path.
+- `API_KEY` is required. stdio mode bypasses the built-in OAuth server entirely and forwards `API_KEY`'s value straight through as the target API's `Authorization: Bearer` token.
+- To register a locally cloned checkout instead, set `command` to `npx` and `args` to `["tsx", "src/stdio.ts", "--openapi", "./docs/openapi.yaml"]` with the client's `cwd` (if supported) pointed at the repo root — this runs the same `src/stdio.ts` entrypoint. Don't use `npm run stdio` for client configs: npm's own banner output gets mixed into stdout and breaks the stdio JSON-RPC framing. It's fine for a one-off manual check in your terminal, just not as the client's launch command.
+
 ---
 
 ## 📚 Documentation

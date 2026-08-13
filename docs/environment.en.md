@@ -5,6 +5,7 @@
 | Name | Description | Required |
 |---|---|---|
 | `API_BASE_URL` | Base URL of the target API. Has no default; calling a tool while unset returns a server misconfiguration error | **Required** |
+| `API_KEY` | stdio entrypoint (`src/stdio.ts`) only. Passes the target API key directly, bypassing the OAuth layer (used in place of an `Authorization: Bearer` header). Not used by the Workers/Node HTTP entrypoints | **Required for stdio** |
 | `MCP_SERVER_NAME` | MCP server name (default: `beefchicken-mcp`) | Optional |
 | `MCP_SERVER_DESCRIPTION` | MCP server description text (default: generic text) | Optional |
 | `HOST` | Bind address for Node.js (default: `127.0.0.1`) | Optional |
