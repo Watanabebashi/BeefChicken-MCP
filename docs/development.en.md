@@ -35,6 +35,14 @@ npm test
 npm run typecheck
 ```
 
+### Node.js support range (runtime vs. development)
+
+`engines.node` in `package.json` is `>=22.5.0` — the version that made `node:sqlite` available. That is the requirement **for running this server**. The CLI installed from npm (`beefchicken-mcp`) pulls only the runtime dependencies, and works fine on 22.5.0.
+
+**Developing in this repository, however, requires 22.13.0 or newer.** ESLint 10 requires `^20.19.0 || ^22.13.0 || >=24`, and the npm bundled with older releases (npm 10.8.2 on Node 22.5.0) hits `Exit handler never called!` against this dependency tree: it exits 0 while never creating `node_modules/.bin/`, so every following command fails with `command not found`.
+
+That is why the `test` job matrix in CI floors at `22.13.0`. `engines` is deliberately left alone, because the runtime requirement has not changed.
+
 ## Lint / formatting
 
 ```bash
