@@ -1,6 +1,9 @@
 import * as fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import * as yaml from 'yaml';
+import type { ToolDefinition } from '../src/tools/executor';
+
+export type { ToolDefinition };
 
 export interface OpenAPISpec {
   paths: Record<string, Record<string, unknown>>;
@@ -12,15 +15,6 @@ interface Parameter {
   in: string;
   required?: boolean;
   schema?: unknown;
-}
-
-interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: unknown;
-  endpoint: { method: string; path: string };
-  paramMapping: Record<string, { in: string; name: string }>;
-  hasBody: boolean;
 }
 
 function resolveRef(ref: string, spec: OpenAPISpec): unknown {
@@ -184,11 +178,28 @@ export function generateTools(spec: OpenAPISpec): ToolDefinition[] {
   return tools;
 }
 
-function main() {
-  const specPath = process.argv[2] ?? 'docs/openapi.yaml';
+export function resolveSpecPath(argv: string[]): string {
+  const flagIndex = argv.indexOf('--openapi');
+  if (flagIndex !== -1) {
+    const value = argv[flagIndex + 1];
+    if (!value) {
+      throw new Error('--openapi requires a file path argument.');
+    }
+    return value;
+  }
+  const positional = argv.find((arg) => !arg.startsWith('--'));
+  return positional ?? 'docs/openapi.yaml';
+}
+
+export function loadToolsFromSpecFile(specPath: string): ToolDefinition[] {
   const raw = fs.readFileSync(specPath, 'utf-8');
   const spec = yaml.parse(raw) as OpenAPISpec;
-  const tools = generateTools(spec);
+  return generateTools(spec);
+}
+
+function main() {
+  const specPath = resolveSpecPath(process.argv.slice(2));
+  const tools = loadToolsFromSpecFile(specPath);
 
   fs.mkdirSync('src/generated', { recursive: true });
   fs.writeFileSync('src/generated/tools.json', JSON.stringify(tools, null, 2));

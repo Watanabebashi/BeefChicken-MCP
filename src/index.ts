@@ -11,6 +11,10 @@ import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
 import { createD1Stores } from './oauthStoreD1';
 import { importEncryptionKey } from './oauthCrypto';
+import toolsJson from './generated/tools.json';
+import type { ToolDefinition } from './tools/executor';
+
+const tools = toolsJson as ToolDefinition[];
 
 interface Env {
   API_BASE_URL?: string;
@@ -22,7 +26,7 @@ interface Env {
   OAUTH_DB?: D1Database;
 }
 
-const handler = createMcpHandler(createServer, { responseMode: 'json' });
+const handler = createMcpHandler((ctx) => createServer({ ...ctx, tools }), { responseMode: 'json' });
 const app = createMcpHonoApp({ host: '0.0.0.0' });
 
 const encryptionKeyCache = new Map<string, Promise<CryptoKey>>();

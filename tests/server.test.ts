@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createServer, type ServerAuthInfo } from '../src/server';
+import toolsJson from '../src/generated/tools.json';
+import type { ToolDefinition } from '../src/tools/executor';
 
 const TEST_BASE_URL = 'https://api.example.com';
+const tools = toolsJson as ToolDefinition[];
 
 function makeHandler(fetchImpl?: typeof fetch) {
-  return createMcpHandler((ctx) => createServer({ authInfo: ctx.authInfo as ServerAuthInfo, fetchImpl }), {
+  return createMcpHandler((ctx) => createServer({ authInfo: ctx.authInfo as ServerAuthInfo, fetchImpl, tools }), {
     responseMode: 'json',
   });
 }

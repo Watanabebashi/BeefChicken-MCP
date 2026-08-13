@@ -12,8 +12,12 @@ import type { Context } from 'hono';
 import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
 import { importEncryptionKey } from './oauthCrypto';
+import toolsJson from './generated/tools.json';
+import type { ToolDefinition } from './tools/executor';
 
-const handler = createMcpHandler(createServer, { responseMode: 'json' });
+const tools = toolsJson as ToolDefinition[];
+
+const handler = createMcpHandler((ctx) => createServer({ ...ctx, tools }), { responseMode: 'json' });
 
 export async function createNodeApp() {
   const host = process.env.HOST ?? '127.0.0.1';

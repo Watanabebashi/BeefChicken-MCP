@@ -1,5 +1,4 @@
 import { fromJsonSchema, McpServer, type AuthInfo } from '@modelcontextprotocol/server';
-import tools from './generated/tools.json';
 import { ApiError, ApiClient } from './client';
 import { executeTool } from './tools/executor';
 import type { ToolDefinition } from './tools/executor';
@@ -15,9 +14,10 @@ export interface ServerAuthInfo extends AuthInfo {
 export interface FactoryContext {
   authInfo?: ServerAuthInfo;
   fetchImpl?: typeof fetch;
+  tools: ToolDefinition[];
 }
 
-export function createServer({ authInfo, fetchImpl }: FactoryContext): McpServer {
+export function createServer({ authInfo, fetchImpl, tools }: FactoryContext): McpServer {
   const baseUrl = readEnv('API_BASE_URL', authInfo?.env);
   const apiKey = (authInfo?.extra?.apiKey as string | undefined) ?? authInfo?.token;
   const client = apiKey && baseUrl ? new ApiClient(baseUrl, apiKey, fetchImpl) : null;
@@ -28,7 +28,7 @@ export function createServer({ authInfo, fetchImpl }: FactoryContext): McpServer
     description: readEnv('MCP_SERVER_DESCRIPTION', authInfo?.env) ?? DEFAULT_SERVER_DESCRIPTION,
   });
 
-  for (const tool of tools as ToolDefinition[]) {
+  for (const tool of tools) {
     server.registerTool(
       tool.name,
       {
