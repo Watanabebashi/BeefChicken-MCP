@@ -7,6 +7,16 @@ import { logToolCall } from './logging';
 const DEFAULT_SERVER_NAME = 'beefchicken-mcp';
 const DEFAULT_SERVER_DESCRIPTION = 'MCP server generated from an OpenAPI specification';
 
+const inputSchemaCache = new WeakMap<ToolDefinition, ReturnType<typeof fromJsonSchema>>();
+function getCachedInputSchema(tool: ToolDefinition): ReturnType<typeof fromJsonSchema> {
+  let schema = inputSchemaCache.get(tool);
+  if (!schema) {
+    schema = fromJsonSchema(tool.inputSchema);
+    inputSchemaCache.set(tool, schema);
+  }
+  return schema;
+}
+
 export interface ServerAuthInfo extends AuthInfo {
   env?: Record<string, string | undefined>;
 }
@@ -33,7 +43,7 @@ export function createServer({ authInfo, fetchImpl, tools }: FactoryContext): Mc
       tool.name,
       {
         description: tool.description,
-        inputSchema: fromJsonSchema(tool.inputSchema),
+        inputSchema: getCachedInputSchema(tool),
       },
       async (input) => {
         if (!client) {
