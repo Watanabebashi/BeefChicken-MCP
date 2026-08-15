@@ -1,6 +1,6 @@
 {
   "name": "beefchicken-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Generates an MCP server from an OpenAPI specification, deployable on Cloudflare Workers and Node.js hosting.",
   "type": "module",
   "license": "MIT",
