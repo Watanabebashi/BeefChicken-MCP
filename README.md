@@ -11,6 +11,8 @@
   [![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io/)
   [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020.svg?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
   [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
+  [![npm version](https://img.shields.io/npm/v/beefchicken-mcp.svg?logo=npm&logoColor=white)](https://www.npmjs.com/package/beefchicken-mcp)
+  [![npm downloads](https://img.shields.io/npm/dm/beefchicken-mcp.svg?logo=npm&logoColor=white)](https://www.npmjs.com/package/beefchicken-mcp)
 </div>
 
 ---
@@ -55,6 +57,7 @@ graph LR
 - 🧩 **コード記述 0 行**: `docs/openapi.yaml` を繋ぎたいAPIの仕様書に差し替えるだけ！
 - 🔐 **Claude.ai (Web版) 即対応**: 簡易 OAuth 2.1 サーバー内蔵で、Web版Claudeのカスタムコネクタも一発接続。
 - ⚡️ **サーバー維持費 0 円**: **Cloudflare Workers** に数秒でデプロイ（Docker / Node.js にも対応）。無料枠内ならタダでMCPサーバーがあなたのものに。
+- 📥 **デプロイすら不要な最短経路**: Claude Desktop 等のローカルクライアントなら、cloneもビルドも不要。[npm](https://www.npmjs.com/package/beefchicken-mcp) から `npx beefchicken-mcp` で即起動。
 - 📦 **超軽量＆ゼロパースオーバーヘッド**: OpenAPI 仕様書はビルド時（Workers）・起動時（Docker）・デプロイ前の `npm run generate`（Node.js）のいずれかで静的 JSON へ変換済み。リクエスト処理中の YAML パースは一切不要。
 
 ---
@@ -78,6 +81,7 @@ graph LR
 - 📦 **静的JSON変換**: 実行時の YAML パーサーや `$ref` 解決ロジックを非搭載にし、Worker バンドルサイズを最小化。
 - 🔌 **ネイティブ `fetch` 中継**: 余計な HTTP クライアントライブラリを挟まずレスポンスをダイレクト中継。
 - 🛡️ **Stateless & Robust**: SSE 長時間保持に依存しない `responseMode: 'json'` 構成。タイムアウト制限に強い堅牢設計。
+- 📦 **4通りの配布形態**: Cloudflare Workers / Node.js / Docker イメージ（GHCR）/ npm CLI（`npx beefchicken-mcp`）。用途に応じて選択可能。
 
 > **⚠️ 本番公開前の注意点**:
 > 本サーバー自体にはレート制限がありません。公開時は Cloudflare の [Rate Limiting Rules](https://developers.cloudflare.com/waf/rate-limiting-rules/) やリバースプロキシ等で制御してください。また同梱の OAuth 2.1 サーバーは簡易実装です。詳細は [認証ドキュメント](docs/oauth.md) を確認してください。
@@ -97,6 +101,12 @@ npm run generate   # docs/openapi.yaml を解析し、src/generated/tools.json �
 ```
 
 ### 2. デプロイ / 実行
+
+**ローカル MCP クライアント（Claude Desktop 等）の場合 — 最短:**
+```bash
+npx beefchicken-mcp --openapi /絶対パス/to/openapi.yaml
+```
+[npm パッケージ](https://www.npmjs.com/package/beefchicken-mcp)として配布しているため、cloneもデプロイも不要です（この経路では手順1の `npm install` / `npm run generate` も不要で、指定した仕様書を起動のたびにオンメモリで解析します）。クライアント設定への具体的な登録方法は[手順4](#4-ローカル-mcp-クライアントclaude-desktop-等から直接使う場合)を参照してください。
 
 **Cloudflare Workers の場合:**
 ```bash
