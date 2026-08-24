@@ -107,7 +107,16 @@ export function createTokenVerifier(
         await accessTokens.delete(token);
         throw new OAuthError(OAuthErrorCode.InvalidToken, 'access token is unknown, expired, or revoked');
       }
-      const apiKey = await decryptSecret(encryptionKey, record.encryptedApiKey);
+      let apiKey: string;
+      try {
+        apiKey = await decryptSecret(encryptionKey, record.encryptedApiKey);
+      } catch {
+        await accessTokens.delete(token);
+        throw new OAuthError(
+          OAuthErrorCode.InvalidToken,
+          'access token could not be decrypted (encryption key rotated or corrupted record)'
+        );
+      }
       const authInfo: AuthInfo = {
         token,
         clientId: record.clientId,

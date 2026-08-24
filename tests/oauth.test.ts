@@ -804,4 +804,20 @@ describe('createTokenVerifier', () => {
     expect(authInfo.clientId).toBe('c1');
     expect(authInfo.extra?.apiKey).toBe('live_api_key');
   });
+
+  it('rejects (as invalid_token, not a raw crash) and deletes a token that fails to decrypt under the current key', async () => {
+    const otherKey = await importEncryptionKey(
+      Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64')
+    );
+    const encryptedUnderOtherKey = await encryptSecret(otherKey, 'live_api_key');
+    await accessTokens.set('rotated-token', {
+      encryptedApiKey: encryptedUnderOtherKey,
+      clientId: 'c1',
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const verifier = createTokenVerifier(accessTokens, encryptionKey);
+    await expect(verifier.verifyAccessToken('rotated-token')).rejects.toMatchObject({ code: 'invalid_token' });
+    expect(accessTokens.has('rotated-token')).toBe(false);
+  });
 });
