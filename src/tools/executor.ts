@@ -34,9 +34,22 @@ export async function executeTool(
     }
   }
 
+  if (!tool.hasBody && bodyFields.length > 0) {
+    throw new Error(
+      `Tool "${tool.name}" does not accept a request body, but received unexpected field(s): ` +
+        bodyFields.map(([key]) => key).join(', ')
+    );
+  }
+
   let path = tool.endpoint.path;
   for (const [key, value] of Object.entries(pathParams)) {
-    path = path.replace(`{${key}}`, encodeURIComponent(value));
+    path = path.replaceAll(`{${key}}`, encodeURIComponent(value));
+  }
+  const unresolvedPlaceholder = path.match(/\{[^}]*\}/);
+  if (unresolvedPlaceholder) {
+    throw new Error(
+      `Tool "${tool.name}" is missing required path parameter "${unresolvedPlaceholder[0]}" for ${tool.endpoint.path}`
+    );
   }
 
   const body = bodyFields.length > 0 ? Object.fromEntries(bodyFields) : undefined;

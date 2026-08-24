@@ -61,4 +61,56 @@ describe('executeTool', () => {
     expect(calls[0].url).toBe('https://api.example.com/tasks');
     expect(calls[0].body).toBeUndefined();
   });
+
+  it('rejects an unmapped argument for a tool that declares no request body', async () => {
+    const client = new ApiClient('https://api.example.com', 'key', async () => new Response('{}'));
+    const tool: ToolDefinition = {
+      name: 'tasks_get',
+      description: '',
+      inputSchema: {},
+      endpoint: { method: 'GET', path: '/tasks' },
+      paramMapping: { date: { in: 'query', name: 'date' } },
+      hasBody: false,
+    };
+
+    await expect(executeTool(client, tool, { date: '2024-01-01', unexpected: 'x' })).rejects.toThrow(
+      /does not accept a request body/
+    );
+  });
+
+  it('rejects a call that leaves a required path parameter unresolved', async () => {
+    const client = new ApiClient('https://api.example.com', 'key', async () => new Response('{}'));
+    const tool: ToolDefinition = {
+      name: 'tasks_id_get',
+      description: '',
+      inputSchema: {},
+      endpoint: { method: 'GET', path: '/tasks/{id}' },
+      paramMapping: { id: { in: 'path', name: 'id' } },
+      hasBody: false,
+    };
+
+    await expect(executeTool(client, tool, {})).rejects.toThrow(/missing required path parameter/);
+  });
+
+  it('replaces every occurrence of a repeated path placeholder', async () => {
+    const calls: string[] = [];
+    const fetchImpl = async (input: RequestInfo | URL): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      calls.push(url);
+      return new Response('{}', { status: 200 });
+    };
+    const client = new ApiClient('https://api.example.com', 'key', fetchImpl);
+    const tool: ToolDefinition = {
+      name: 'copy_get',
+      description: '',
+      inputSchema: {},
+      endpoint: { method: 'GET', path: '/a/{id}/b/{id}' },
+      paramMapping: { id: { in: 'path', name: 'id' } },
+      hasBody: false,
+    };
+
+    await executeTool(client, tool, { id: '7' });
+
+    expect(calls[0]).toBe('https://api.example.com/a/7/b/7');
+  });
 });
