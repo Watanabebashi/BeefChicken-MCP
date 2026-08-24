@@ -30,6 +30,12 @@ class MemoryKvStore<V extends { expiresAt: number }> implements OAuthKvStore<V> 
     this.map.delete(key);
   }
 
+  async getAndDelete(key: string): Promise<V | undefined> {
+    const value = this.map.get(key);
+    this.map.delete(key);
+    return value;
+  }
+
   async countActive(now = Date.now()): Promise<number> {
     return [...this.map.values()].filter((v) => v.expiresAt >= now).length;
   }

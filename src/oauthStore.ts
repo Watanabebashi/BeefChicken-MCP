@@ -18,6 +18,7 @@ function prepareStatements(db: DatabaseSync) {
         'ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at'
     ),
     delete: db.prepare('DELETE FROM oauth_kv WHERE namespace = ? AND key = ?'),
+    getAndDelete: db.prepare('DELETE FROM oauth_kv WHERE namespace = ? AND key = ? RETURNING value'),
     countActive: db.prepare('SELECT COUNT(*) AS n FROM oauth_kv WHERE namespace = ? AND expires_at >= ?'),
     sweep: db.prepare('DELETE FROM oauth_kv WHERE namespace = ? AND expires_at < ?'),
   };
@@ -42,6 +43,11 @@ class SqliteKvStore<V extends { expiresAt: number }> implements OAuthKvStore<V> 
 
   async delete(key: string): Promise<void> {
     this.stmts.delete.run(this.namespace, key);
+  }
+
+  async getAndDelete(key: string): Promise<V | undefined> {
+    const row = this.stmts.getAndDelete.get(this.namespace, key) as { value: string } | null | undefined;
+    return row?.value != null ? (JSON.parse(row.value) as V) : undefined;
   }
 
   async countActive(now = Date.now()): Promise<number> {

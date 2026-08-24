@@ -44,6 +44,13 @@ export function createFakeD1Database(options?: { failCreateTableTimes?: number }
         return { success: true };
       },
       async first<T>(): Promise<T | null> {
+        if (sql.startsWith('DELETE FROM oauth_kv WHERE namespace = ? AND key = ? RETURNING value')) {
+          const [namespace, key] = boundArgs as [string, string];
+          const mapKey = `${namespace}:${key}`;
+          const row = table.get(mapKey);
+          table.delete(mapKey);
+          return (row ? { value: row.value } : null) as T | null;
+        }
         if (sql.startsWith('SELECT value FROM')) {
           const [namespace, key] = boundArgs as [string, string];
           const row = table.get(`${namespace}:${key}`);

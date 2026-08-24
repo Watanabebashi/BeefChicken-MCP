@@ -59,6 +59,15 @@ class D1KvStore<V extends { expiresAt: number }> implements OAuthKvStore<V> {
     await this.db.prepare('DELETE FROM oauth_kv WHERE namespace = ? AND key = ?').bind(this.namespace, key).run();
   }
 
+  async getAndDelete(key: string): Promise<V | undefined> {
+    await ensureSchema(this.db);
+    const row = await this.db
+      .prepare('DELETE FROM oauth_kv WHERE namespace = ? AND key = ? RETURNING value')
+      .bind(this.namespace, key)
+      .first<{ value: string }>();
+    return row ? (JSON.parse(row.value) as V) : undefined;
+  }
+
   async countActive(now = Date.now()): Promise<number> {
     await ensureSchema(this.db);
     const row = await this.db

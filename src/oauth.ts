@@ -62,6 +62,7 @@ export interface OAuthKvStore<V extends { expiresAt: number }> {
   get(key: string): Promise<V | undefined>;
   set(key: string, value: V): Promise<void>;
   delete(key: string): Promise<void>;
+  getAndDelete(key: string): Promise<V | undefined>;
   countActive(now?: number): Promise<number>;
   sweepExpired(now?: number): Promise<void>;
 }
@@ -301,8 +302,7 @@ export function createOAuthRoutes(
         return c.json(replay.responseBody);
       }
 
-      const record = await refreshTokens.get(suppliedRefreshToken);
-      await refreshTokens.delete(suppliedRefreshToken);
+      const record = await refreshTokens.getAndDelete(suppliedRefreshToken);
       if (!record || record.expiresAt < Date.now() || record.clientId !== clientId) {
         return c.json({ error: 'invalid_grant' }, 400);
       }
@@ -326,8 +326,7 @@ export function createOAuthRoutes(
     const codeVerifier = String(body.code_verifier ?? '');
     const clientId = String(body.client_id ?? '');
 
-    const record = await authCodes.get(code);
-    await authCodes.delete(code);
+    const record = await authCodes.getAndDelete(code);
     if (!record || record.expiresAt < Date.now()) {
       return c.json({ error: 'invalid_grant' }, 400);
     }
