@@ -35,17 +35,20 @@ function resolveRef(ref: string, spec: OpenAPISpec): unknown {
   return current;
 }
 
-function convertSchema(schema: unknown, spec: OpenAPISpec): unknown {
+function convertSchema(schema: unknown, spec: OpenAPISpec, seenRefs: ReadonlySet<string> = new Set()): unknown {
   if (schema === null || typeof schema !== 'object') {
     return schema;
   }
   if (Array.isArray(schema)) {
-    return schema.map((item) => convertSchema(item, spec));
+    return schema.map((item) => convertSchema(item, spec, seenRefs));
   }
 
   const obj = schema as Record<string, unknown>;
   if (typeof obj.$ref === 'string') {
-    return convertSchema(resolveRef(obj.$ref, spec), spec);
+    if (seenRefs.has(obj.$ref)) {
+      throw new Error(`Circular $ref detected while generating tool schema: "${obj.$ref}"`);
+    }
+    return convertSchema(resolveRef(obj.$ref, spec), spec, new Set(seenRefs).add(obj.$ref));
   }
 
   const nullable = obj.nullable === true;
@@ -54,7 +57,7 @@ function convertSchema(schema: unknown, spec: OpenAPISpec): unknown {
     if (key === 'nullable') {
       continue;
     }
-    result[key] = convertSchema(value, spec);
+    result[key] = convertSchema(value, spec, seenRefs);
   }
   if (nullable && typeof result.type === 'string') {
     result.type = [result.type, 'null'];
@@ -79,6 +82,8 @@ function assertSafeRelativePath(path: string): void {
   }
 }
 
+const VALID_TOOL_NAME = /^[a-zA-Z0-9_-]{1,128}$/;
+
 function makeToolName(operation: Record<string, unknown>, method: string, path: string): string {
   if (typeof operation.operationId === 'string' && operation.operationId.length > 0) {
     return operation.operationId;
@@ -94,6 +99,7 @@ function makeToolName(operation: Record<string, unknown>, method: string, path: 
 export function generateTools(spec: OpenAPISpec): ToolDefinition[] {
   const tools: ToolDefinition[] = [];
   const methods = ['get', 'post', 'put', 'delete', 'patch'];
+  const seenNames = new Set<string>();
 
   for (const [path, pathItem] of Object.entries(spec.paths)) {
     assertSafeRelativePath(path);
@@ -109,6 +115,20 @@ export function generateTools(spec: OpenAPISpec): ToolDefinition[] {
       const op = operation as Record<string, unknown>;
 
       const name = makeToolName(op, method, path);
+      if (!VALID_TOOL_NAME.test(name)) {
+        throw new Error(
+          `Invalid tool name "${name}" derived from ${method.toUpperCase()} ${path}. ` +
+            'operationId (or the path-derived fallback) must match [a-zA-Z0-9_-]{1,128}.'
+        );
+      }
+      if (seenNames.has(name)) {
+        throw new Error(
+          `Duplicate tool name "${name}" derived from ${method.toUpperCase()} ${path}. ` +
+            'operationId values must be unique across the spec.'
+        );
+      }
+      seenNames.add(name);
+
       const summary = typeof op.summary === 'string' ? op.summary : '';
       const description = typeof op.description === 'string' ? op.description.trim() : '';
       const fullDescription = [summary, description].filter(Boolean).join('\n\n');
@@ -159,6 +179,7 @@ export function generateTools(spec: OpenAPISpec): ToolDefinition[] {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
         type: 'object',
         properties,
+        additionalProperties: false,
       };
       if (required.length > 0) {
         inputSchema.required = required;

@@ -107,6 +107,31 @@ describe('generateTools $ref resolution', () => {
     expect(() => generateTools(spec)).toThrow(/Unsupported \$ref/);
   });
 
+  it('throws instead of infinitely recursing on a circular $ref', () => {
+    const spec: OpenAPISpec = {
+      paths: {
+        '/widgets': {
+          post: {
+            requestBody: {
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/Node' } },
+              },
+            },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          Node: {
+            type: 'object',
+            properties: { child: { $ref: '#/components/schemas/Node' } },
+          },
+        },
+      },
+    };
+    expect(() => generateTools(spec)).toThrow(/Circular \$ref detected/);
+  });
+
   it('throws for a $ref that does not resolve to anything', () => {
     const spec: OpenAPISpec = {
       paths: {
@@ -171,6 +196,16 @@ describe('generateTools nullable conversion', () => {
   });
 });
 
+describe('generateTools input schema strictness', () => {
+  it('sets additionalProperties: false so unknown arguments are rejected by schema validation', () => {
+    const spec: OpenAPISpec = {
+      paths: { '/widgets': { get: { parameters: [{ name: 'q', in: 'query' }] } } },
+    };
+    const tools = generateTools(spec);
+    expect(tools[0].inputSchema).toMatchObject({ additionalProperties: false });
+  });
+});
+
 describe('generateTools tool naming', () => {
   it('uses operationId when present', () => {
     const spec: OpenAPISpec = {
@@ -194,6 +229,23 @@ describe('generateTools tool naming', () => {
     };
     const tools = generateTools(spec);
     expect(tools[0].name).toBe('widgets_get');
+  });
+
+  it('rejects an operationId with characters outside the MCP tool name charset', () => {
+    const spec: OpenAPISpec = {
+      paths: { '/widgets': { get: { operationId: 'list widgets!' } } },
+    };
+    expect(() => generateTools(spec)).toThrow(/Invalid tool name/);
+  });
+
+  it('rejects duplicate tool names derived from different operations', () => {
+    const spec: OpenAPISpec = {
+      paths: {
+        '/a': { get: { operationId: 'sameName' } },
+        '/b': { get: { operationId: 'sameName' } },
+      },
+    };
+    expect(() => generateTools(spec)).toThrow(/Duplicate tool name/);
   });
 });
 
