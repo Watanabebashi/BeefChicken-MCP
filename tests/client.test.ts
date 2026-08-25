@@ -78,6 +78,18 @@ describe('ApiClient', () => {
     await expect(client.request('GET', '//attacker.example/steal')).rejects.toThrow(/cross-origin/);
   });
 
+  it('aborts and rejects a request that exceeds the configured timeout', async () => {
+    const fetchImpl = (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' }));
+        });
+      });
+
+    const client = new ApiClient('https://api.example.com', 'test_key', fetchImpl, 10);
+    await expect(client.request('GET', '/api/blocks')).rejects.toThrow(/timed out after 10ms/);
+  });
+
   it('throws an ApiError on non-ok responses without leaking the response body', async () => {
     const fetchImpl = async (): Promise<Response> =>
       new Response(JSON.stringify({ error: 'bad request', internal_debug_info: 'sensitive' }), { status: 400 });

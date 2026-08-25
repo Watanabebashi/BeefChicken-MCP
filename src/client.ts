@@ -10,11 +10,14 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 export class ApiClient {
   constructor(
     private baseUrl: string,
     private apiKey: string,
-    private fetchImpl: typeof fetch = fetch.bind(globalThis)
+    private fetchImpl: typeof fetch = fetch.bind(globalThis),
+    private timeoutMs: number = DEFAULT_TIMEOUT_MS
   ) {}
 
   async request(method: string, path: string, options: RequestOptions = {}): Promise<unknown> {
@@ -25,13 +28,21 @@ export class ApiClient {
       Accept: 'application/json',
     };
 
-    const init: RequestInit = { method, headers };
+    const init: RequestInit = { method, headers, signal: AbortSignal.timeout(this.timeoutMs) };
     if (options.body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(options.body);
     }
 
-    const response = await this.fetchImpl(url, init);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(url, init);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new Error(`Request to ${url.origin} timed out after ${this.timeoutMs}ms`, { cause: error });
+      }
+      throw error;
+    }
 
     if (!response.ok) {
       throw new ApiError(response.status);
