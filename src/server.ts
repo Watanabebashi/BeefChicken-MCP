@@ -3,6 +3,7 @@ import { ApiError, ApiClient } from './client';
 import { executeTool } from './tools/executor';
 import type { ToolDefinition } from './tools/executor';
 import { logToolCall } from './logging';
+import packageJson from '../package.json';
 
 const DEFAULT_SERVER_NAME = 'beefchicken-mcp';
 const DEFAULT_SERVER_DESCRIPTION = 'MCP server generated from an OpenAPI specification';
@@ -34,7 +35,7 @@ export function createServer({ authInfo, fetchImpl, tools }: FactoryContext): Mc
 
   const server = new McpServer({
     name: readEnv('MCP_SERVER_NAME', authInfo?.env) ?? DEFAULT_SERVER_NAME,
-    version: '0.2.0',
+    version: packageJson.version,
     description: readEnv('MCP_SERVER_DESCRIPTION', authInfo?.env) ?? DEFAULT_SERVER_DESCRIPTION,
   });
 

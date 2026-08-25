@@ -3,6 +3,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createServer, type ServerAuthInfo } from '../src/server';
 import toolsJson from '../src/generated/tools.json';
 import type { ToolDefinition } from '../src/tools/executor';
+import packageJson from '../package.json';
 
 const TEST_BASE_URL = 'https://api.example.com';
 const tools = toolsJson as ToolDefinition[];
@@ -39,6 +40,23 @@ function parseSse(text: string): unknown {
 }
 
 describe('MCP server', () => {
+  it('reports the server version from package.json instead of a hardcoded value', async () => {
+    const handler = makeHandler();
+    const response = await post(
+      handler,
+      {
+        jsonrpc: '2.0',
+        id: 0,
+        method: 'initialize',
+        params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '0' } },
+      },
+      'test_key'
+    );
+    expect(response.status).toBe(200);
+    const payload = parseSse(await response.text()) as { result: { serverInfo: { version: string } } };
+    expect(payload.result.serverInfo.version).toBe(packageJson.version);
+  });
+
   it('lists tools', async () => {
     const handler = makeHandler();
     const response = await post(handler, { jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'test_key');
