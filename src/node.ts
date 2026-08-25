@@ -12,6 +12,7 @@ import type { Context } from 'hono';
 import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
 import { importEncryptionKey } from './oauthCrypto';
+import { extractBearerToken, parseCommaSeparatedEnv } from './httpEnv';
 import toolsJson from './generated/tools.json';
 import type { ToolDefinition } from './tools/executor';
 
@@ -109,45 +110,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 
-function extractBearerToken(header: string | undefined): string | undefined {
-  if (!header) {
-    return undefined;
-  }
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1];
-}
-
 function getAllowedHosts(): string[] | undefined {
-  const raw = process.env.ALLOWED_HOSTS;
-  if (typeof raw === 'string' && raw.length > 0) {
-    return raw
-      .split(',')
-      .map((h) => h.trim())
-      .filter(Boolean);
-  }
-  return undefined;
+  const values = parseCommaSeparatedEnv(process.env.ALLOWED_HOSTS);
+  return values.length > 0 ? values : undefined;
 }
 
 function getAllowedOrigins(): string[] | undefined {
-  const raw = process.env.ALLOWED_ORIGINS;
-  if (typeof raw === 'string' && raw.length > 0) {
-    return raw
-      .split(',')
-      .map((h) => h.trim())
-      .filter(Boolean);
-  }
-  return undefined;
+  const values = parseCommaSeparatedEnv(process.env.ALLOWED_ORIGINS);
+  return values.length > 0 ? values : undefined;
 }
 
 function getAllowedRedirectUris(): Set<string> {
-  const raw = process.env.OAUTH_ALLOWED_REDIRECT_URIS;
-  if (typeof raw !== 'string' || raw.length === 0) {
-    return new Set();
-  }
-  return new Set(
-    raw
-      .split(',')
-      .map((u) => u.trim())
-      .filter(Boolean)
-  );
+  return new Set(parseCommaSeparatedEnv(process.env.OAUTH_ALLOWED_REDIRECT_URIS));
 }

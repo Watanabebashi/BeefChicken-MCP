@@ -11,6 +11,7 @@ import { createServer, type ServerAuthInfo } from './server';
 import { createOAuthRoutes, createTokenVerifier, buildAuthorizationServerMetadata } from './oauth';
 import { createD1Stores } from './oauthStoreD1';
 import { importEncryptionKey } from './oauthCrypto';
+import { extractBearerToken, parseCommaSeparatedEnv } from './httpEnv';
 import toolsJson from './generated/tools.json';
 import type { ToolDefinition } from './tools/executor';
 
@@ -40,15 +41,7 @@ function getEncryptionKey(raw: string): Promise<CryptoKey> {
 }
 
 function getAllowedRedirectUris(raw: string | undefined): Set<string> {
-  if (typeof raw !== 'string' || raw.length === 0) {
-    return new Set();
-  }
-  return new Set(
-    raw
-      .split(',')
-      .map((u) => u.trim())
-      .filter(Boolean)
-  );
+  return new Set(parseCommaSeparatedEnv(raw));
 }
 
 function isMisconfigured(env: Env): boolean {
@@ -151,11 +144,3 @@ app.all('/mcp', async (c: Context) => {
 });
 
 export default app;
-
-function extractBearerToken(header: string | undefined): string | undefined {
-  if (!header) {
-    return undefined;
-  }
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1];
-}
