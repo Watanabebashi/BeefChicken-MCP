@@ -41,7 +41,7 @@ export function createFakeD1Database(options?: { failCreateTableTimes?: number }
           }
           return { success: true };
         }
-        return { success: true };
+        throw new Error(`createFakeD1Database: no run() handler matches SQL: ${sql}`);
       },
       async first<T>(): Promise<T | null> {
         if (sql.startsWith('DELETE FROM oauth_kv WHERE namespace = ? AND key = ? RETURNING value')) {
@@ -66,7 +66,7 @@ export function createFakeD1Database(options?: { failCreateTableTimes?: number }
           }
           return { n } as T;
         }
-        return null;
+        throw new Error(`createFakeD1Database: no first() handler matches SQL: ${sql}`);
       },
     };
     return statement;
