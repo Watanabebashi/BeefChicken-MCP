@@ -2,14 +2,13 @@ import { Buffer } from 'node:buffer';
 
 const IV_BYTES = 12;
 const KEY_BYTES = 32;
+const BASE64_RE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
 
 export function assertValidEncryptionKeyFormat(base64Key: string): Uint8Array {
-  let raw: Buffer;
-  try {
-    raw = Buffer.from(base64Key, 'base64');
-  } catch {
+  if (!BASE64_RE.test(base64Key)) {
     throw new Error('OAUTH_ENCRYPTION_KEY must be valid base64');
   }
+  const raw = Buffer.from(base64Key, 'base64');
   if (raw.length !== KEY_BYTES) {
     throw new Error(
       `OAUTH_ENCRYPTION_KEY must decode to exactly ${KEY_BYTES} bytes (a 256-bit AES-GCM key), got ${raw.length}`

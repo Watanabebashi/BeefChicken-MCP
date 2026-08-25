@@ -35,4 +35,10 @@ describe('oauthCrypto', () => {
   it('rejects invalid base64', async () => {
     await expect(importEncryptionKey('not-valid-base64!!!')).rejects.toThrow();
   });
+
+  it('rejects a string with invalid characters that Buffer.from would otherwise silently drop to a 32-byte decode', async () => {
+    const good = randomKeyB64();
+    const withInvalidChar = good.slice(0, 20) + '!' + good.slice(20);
+    await expect(importEncryptionKey(withInvalidChar)).rejects.toThrow(/must be valid base64/);
+  });
 });
